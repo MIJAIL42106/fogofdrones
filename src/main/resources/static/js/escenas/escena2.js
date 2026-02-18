@@ -4,21 +4,21 @@ gameState = {       // va a almacenar el estado del juego
     colorRojo: 0xffaaaa
 }; 
     
-class scene2 extends Phaser.Scene {
+class escena2 extends Phaser.Scene {
     
     constructor() {
         super({key: "prueba"});  // nombre de escena
     }
     
     preload() {
-        this.load.image("Fondo",".//assets/eldenmiedo.jpg");
+        //this.load.image("Fondo",".//assets/eldenmiedo.jpg");
         this.load.spritesheet("dronN",".//assets/sprites/dronN-512x512x2.png",{frameWidth: 512, frameHeight: 512});
     }
 
      
     create() {          // si voy a usar una variable en 2 funciones distintas, ej create y update, debo crerla global a ellas, por fuera, hay otras formas pero para juego pequeño no es mucho problema
-        var fondo = this.add.image(930,530,"Fondo"); // agregamos el fondo a la escena
-        fondo.setScale(3.5);//escalamos el fondo
+        //var fondo = this.add.image(930,530,"Fondo"); // agregamos el fondo a la escena
+        //fondo.setScale(3.5);//escalamos el fondo
         
         gameState.apretado = false;
 

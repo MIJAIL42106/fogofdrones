@@ -17,9 +17,9 @@ var config = {
     },*/
 
     scene:[     // 
-        scene1,
-        scene2,
-        scene3,
+        escena1,
+        escena2,
+        escena3,
     ]  
 }
 

@@ -96,7 +96,7 @@ class Grid
     }*/
 }
 
-class scene3 extends Phaser.Scene {
+class escena3 extends Phaser.Scene {
 
     constructor() {
         super({key: "tablero"});  // nombre de escena
@@ -119,3 +119,4 @@ class scene3 extends Phaser.Scene {
     }
 
 }
+

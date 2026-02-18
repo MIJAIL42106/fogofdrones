@@ -4,7 +4,7 @@ gameState = {       // va a almacenar el estado del juego
         colorRojo: 0xffaaaa
     };  
 
-class scene1 extends Phaser.Scene {
+class escena1 extends Phaser.Scene {
 
     constructor() {
         super({key: "chat"});  // nombre
