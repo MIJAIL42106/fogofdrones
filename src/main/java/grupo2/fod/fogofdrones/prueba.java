@@ -9,7 +9,7 @@ public class prueba {
         Jugador j1 = new Jugador("Juan1",0,0);
         Jugador j2 = new Jugador("Pepe2",0,0);
         Partida p = new Partida(j1, j2 );
-        
+
         // 
         Posicion pos = new Posicion(0, 0);
         p.desplegarDron(pos);
