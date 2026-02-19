@@ -5,6 +5,7 @@ import java.io.Serializable;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import grupo2.fod.fogofdrones.service.logica.Partida;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -20,13 +21,13 @@ public class Persistencia implements Serializable{
 
     @Column(name = "partida")
     @JdbcTypeCode(SqlTypes.JSON)
-    private String partida;
+    private Partida partida;
 
     public Persistencia(){
 
     }
 
-    public Persistencia(String partida, String jugadorA, String jugadorN ) {
+    public Persistencia(Partida partida, String jugadorA, String jugadorN ) {
         this.jugadores = new JugadoresId(jugadorA,jugadorN);
         this.partida = partida;
     }
@@ -40,9 +41,9 @@ public class Persistencia implements Serializable{
     }
 
     /**
-     * @return String return the partida
+     * @return Partida return the partida
      */
-    public String getPartida() {
+    public Partida getPartida() {
         return partida;
     }
 

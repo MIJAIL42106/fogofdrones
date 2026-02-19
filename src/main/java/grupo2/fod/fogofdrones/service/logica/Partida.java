@@ -401,6 +401,14 @@ public class Partida {
         return disparo;
     }
 
+    public Jugador getJugadorNaval() {
+        return jugadorNaval;
+    }
+
+    public Jugador getJugadorAereo() {
+        return jugadorAereo;
+    }
+
     public PortaDrones getPortaDronesEquipo(Equipo equipoParam) {
         PortaDrones aux;
         if(equipoParam == Equipo.NAVAL)
