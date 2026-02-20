@@ -20,7 +20,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 public class GameHandler extends TextWebSocketHandler {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameHandler.class);
-
+	// mapa de partidas y sesiones de partidas 
 	private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<WebSocketSession>();
 
 	@Override

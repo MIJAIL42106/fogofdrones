@@ -5,11 +5,17 @@ import java.io.Serializable;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import grupo2.fod.fogofdrones.service.logica.Partida;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "tablaprueba")
+@Table(name = "partida")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Persistencia implements Serializable{
     private static final long serialVersionUID = 1L;
 

@@ -17,7 +17,11 @@ public class Servicios{
     private JugadoresRepositorio repo;
     @Autowired
     private PersistenciaRepositorio repoPartidas;
-
+    // objeto jugador/cliente con referencia a conexion, no la guardo separada la accedo desde ese objeto
+    // -separacion en capas pero permite acceso desde el
+    // otro objeto con web socket y jugador, jugador conoce coexion y web socket conoce jugador
+    // guardar id de sesion en mapa no necesario todo objeto
+    // en handler mandar a esta conexion tal mensaje
     private Map<String,Partida> partidas = new ConcurrentHashMap<>();
 
     public void crearPartida(String jugador1, String jugador2) {
@@ -87,10 +91,12 @@ public class Servicios{
             case NAVAL:
                 partida.getJugadorNaval().sumarVictoria();
                 partida.getJugadorNaval().sumarPuntos(10); // Ejemplo de puntos por victoria
+                repo.save(partida.getJugadorNaval());
                 break;
             case AEREO:
                 partida.getJugadorAereo().sumarVictoria();
                 partida.getJugadorAereo().sumarPuntos(10); // Ejemplo de puntos por victoria
+                repo.save(partida.getJugadorAereo());
                 break;
             default:
                 // Empate, no se suman victorias ni puntos
@@ -114,7 +120,7 @@ public class Servicios{
             Partida partida = persistencia.getPartida();
             String jugadorA = partida.getJugadorAereo().getNombre();
             String jugadorN = partida.getJugadorNaval().getNombre();
-            String clave = generarClave(jugadorA, jugadorN);
+            String clave = generarClave(jugadorN, jugadorA);
             partidas.put(clave, partida);
         } else {
             System.out.println("Error: no se encontró una partida con ese nombre");

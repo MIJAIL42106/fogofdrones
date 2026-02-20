@@ -1,7 +1,12 @@
 package grupo2.fod.fogofdrones.service.logica;
 
+import java.io.Serializable;
 
-public abstract class Unidad {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public abstract class Unidad implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int id;
     private int vida;

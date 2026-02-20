@@ -1,7 +1,12 @@
 package grupo2.fod.fogofdrones.service.logica;
 
+import java.io.Serializable;
 
-public class Posicion {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Posicion implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int x;
     private int y;

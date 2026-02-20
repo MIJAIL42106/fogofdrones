@@ -57,6 +57,7 @@ class escena3 extends Phaser.Scene {
         let indx = this.add.text(1700 , 900,"iX: ", { fill: "#222222", font: "40px Times New Roman"});
         let indy = this.add.text(1700 , 1000,"iY: ", { fill: "#222222", font: "40px Times New Roman"});
                                                         // creacion de conexion a websocket
+        // agregar otra capa intermedia para la conexion
         this.socket = new WebSocket('http://26.169.248.78:8080/game'); // http://26.169.248.78:8080/game  ws://localhost:8080/game
 
         //this.size = gameState.ancho * gameState.alto;   // usado para asignar intreraccion a celdas en un for // puede remplazarse

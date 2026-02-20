@@ -1,8 +1,12 @@
 package grupo2.fod.fogofdrones.service.logica;
 
+import java.io.Serializable;
 import java.util.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-public class Partida {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Partida implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private Mapa tablero;
     private Jugador jugadorAereo, jugadorNaval;
@@ -428,6 +432,34 @@ public class Partida {
         for (Dron dron : dronesAereos) {
             tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.AEREO);
         }
+    }
+
+    public Mapa getTablero() {
+        return tablero;
+    }
+
+    public List<Dron> getDronesAereos() {
+        return dronesAereos;
+    }
+
+    public List<Dron> getDronesNavales() {
+        return dronesNavales;
+    }
+
+    public PortaDrones getPortaDronesNaval() {
+        return portaDronesNaval;
+    }
+
+    public PortaDrones getPortaDronesAereo() {
+        return portaDronesAereo;
+    }
+
+    public int getTurnosMuerteSubita() {
+        return turnosMuerteSubita;
+    }
+
+    public boolean getRecargo() {
+        return recargo;
     }
 
 

@@ -1,7 +1,12 @@
 package grupo2.fod.fogofdrones.service.logica;
 
+import java.io.Serializable;
 
-public class Dron extends Unidad {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Dron extends Unidad implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int municion;
     private int rangoAtaque;
