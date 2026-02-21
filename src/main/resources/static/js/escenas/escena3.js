@@ -82,10 +82,14 @@ class escena3 extends Phaser.Scene {
         this.load.image("Atacar",".//assets/fondos/atacar.png");
         this.load.image("Recargar",".//assets/fondos/recargar.png");
         this.load.image("Pasar",".//assets/fondos/pasar_turno.png");
+        this.load.image("PortaN",".//assets/sprites/PortaVerde-64x64x1.png");
+        this.load.image("PortaA",".//assets/sprites/PortaRojo-64x64x1.png");
+        this.load.spritesheet("DronN",".//assets/sprites/DronVerde-64x64x2.png",{frameWidth: 64, frameHeight: 64});
+        this.load.spritesheet("DronA",".//assets/sprites/DronRojo-64x64x2.png",{frameWidth: 64, frameHeight: 64});
     }
 
     create() {
-        this.graphics = this.add.graphics();
+        this.graphics = this.add.graphics();    // creo que no usado por ahora pero para dar brillo a botones y celdas puede ser util
         this.crearFondo();
         //var fondo = this.add.image(960,540,"Fondo");   // creacion de fondo en posicion    // podria calcularse centro despues
         //fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
