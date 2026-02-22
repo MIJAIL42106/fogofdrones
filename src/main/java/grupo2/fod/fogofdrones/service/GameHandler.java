@@ -49,12 +49,20 @@ public class GameHandler {
 	@MessageMapping("/accion")
 	public void handleAction(@Payload Map<String, Object> data) {
 		try {
+			LOGGER.info("========== MENSAJE RECIBIDO ==========");
+			LOGGER.info("Datos completos: {}", data);
+			
 			String nombre = (String) data.get("nombre");
 			
 			LOGGER.info("Acción recibida de: {}", nombre);
+			LOGGER.info("Estado actual - jugador1: {}, jugador2: {}, partida existe: {}", 
+				jugador1 != null ? jugador1.getNombre() : "null", 
+				jugador2 != null ? jugador2.getNombre() : "null",
+				p != null);
 			
 			// Si no hay partida, intentar crear jugadores
 			if (p == null) {
+				LOGGER.info("No hay partida creada, intentando crear jugador...");
 				handleCrearJugador(nombre);
 			} else if (p.esMiTurno(nombre)) {
 				// Si es el turno del jugador, procesar la acción
@@ -81,8 +89,10 @@ public class GameHandler {
 				}
 				
 				// Enviar estado actualizado a todos los clientes
+				LOGGER.info("Enviando estado actualizado después de acción...");
 				String respuesta = mensajeRetorno();
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
+				LOGGER.info("Estado actualizado enviado a todos los clientes");
 				
 			} else {
 				LOGGER.info("No es tu turno: {}", nombre);
@@ -109,6 +119,7 @@ public class GameHandler {
 				// Notificar al jugador 1 que es NAVAL
 				VoMensaje mensaje = new VoMensaje(nombre, Equipo.NAVAL);
 				String respuesta = mapper.writeValueAsString(mensaje);
+				LOGGER.info("Enviando asignación NAVAL al jugador 1: {}", respuesta);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
 				
 			} else if (jugador2 == null && !jugador1.getNombre().equals(nombre)) {
@@ -120,12 +131,16 @@ public class GameHandler {
 				// Notificar al jugador 2 que es AEREO
 				VoMensaje mensaje = new VoMensaje(nombre, Equipo.AEREO);
 				String respuesta = mapper.writeValueAsString(mensaje);
+				LOGGER.info("Enviando asignación AEREO al jugador 2: {}", respuesta);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
 				
 				// Enviar estado inicial del juego a todos los jugadores
 				String estadoInicial = mensajeRetorno();
+				LOGGER.info("Enviando estado inicial de la partida (tamaño: {} chars)", estadoInicial != null ? estadoInicial.length() : 0);
 				messagingTemplate.convertAndSend("/topic/game", estadoInicial);
 				LOGGER.info("Estado inicial de la partida enviado a todos los jugadores");
+			} else {
+				LOGGER.warn("Intento de conexión duplicada del jugador: {}", nombre);
 			}
 		} catch (Exception e) {
 			LOGGER.error("Error al crear jugador: {}", e.getMessage(), e);
@@ -202,12 +217,15 @@ public class GameHandler {
 	public String mensajeRetorno() {
 		String t = null;
 		try {
+			LOGGER.info("Generando mensaje de retorno...");
 			// Crear VoMensaje con la fase y la grilla completa
 			VoMensaje mensaje = new VoMensaje(p.getFasePartida(), p.getTablero());
 			t = mapper.writeValueAsString(mensaje);
-			LOGGER.debug("Estado del juego serializado");
+			LOGGER.info("Estado del juego serializado exitosamente - Tamaño: {} chars", t.length());
+			LOGGER.debug("Contenido del mensaje (primeros 200 chars): {}", t.substring(0, Math.min(200, t.length())));
 		} catch (Exception e) {
 			LOGGER.error("Error al serializar el estado del juego", e);
+			e.printStackTrace();
 		}
 		return t;
 	}
