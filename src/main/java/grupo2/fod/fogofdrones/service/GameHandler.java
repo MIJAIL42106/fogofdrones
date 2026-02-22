@@ -4,6 +4,8 @@ import grupo2.fod.fogofdrones.service.logica.Partida;
 import grupo2.fod.fogofdrones.service.logica.Jugador;
 import grupo2.fod.fogofdrones.service.logica.Posicion;
 import grupo2.fod.fogofdrones.service.logica.FasePartida;
+import grupo2.fod.fogofdrones.service.logica.Equipo;
+import grupo2.fod.fogofdrones.service.valueObject.VoMensaje;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -84,6 +86,10 @@ public class GameHandler {
 				
 			} else {
 				LOGGER.info("No es tu turno: {}", nombre);
+				// Enviar mensaje de error al jugador
+				VoMensaje mensajeError = new VoMensaje(nombre, "No es tu turno");
+				String respuesta = mapper.writeValueAsString(mensajeError);
+				messagingTemplate.convertAndSend("/topic/game", respuesta);
 			}
 			
 		} catch (Exception e) {
@@ -95,18 +101,29 @@ public class GameHandler {
 	 * Maneja la creación de jugadores y partida
 	 */
 	private void handleCrearJugador(String nombre) {
-		if (jugador1 == null) {
-			jugador1 = new Jugador(nombre, 0, 0);
-			LOGGER.info("Jugador 1 creado: {}", jugador1.getNombre());
-		} else if (jugador2 == null) {
-			jugador2 = new Jugador(nombre, 0, 0);
-			LOGGER.info("Jugador 2 creado: {}", jugador2.getNombre());
-			p = new Partida(jugador1, jugador2);
-			LOGGER.info("Partida creada con jugadores: {} y {}", jugador1.getNombre(), jugador2.getNombre());
-			
-			// Notificar a todos que la partida ha comenzado
-			String respuesta = mensajeRetorno();
-			messagingTemplate.convertAndSend("/topic/game", respuesta);
+		try {
+			if (jugador1 == null) {
+				jugador1 = new Jugador(nombre, 0, 0);
+				LOGGER.info("Jugador 1 creado: {}", jugador1.getNombre());
+				
+				// Notificar al jugador 1 que es NAVAL
+				VoMensaje mensaje = new VoMensaje(nombre, Equipo.NAVAL);
+				String respuesta = mapper.writeValueAsString(mensaje);
+				messagingTemplate.convertAndSend("/topic/game", respuesta);
+				
+			} else if (jugador2 == null && !jugador1.getNombre().equals(nombre)) {
+				jugador2 = new Jugador(nombre, 0, 0);
+				LOGGER.info("Jugador 2 creado: {}", jugador2.getNombre());
+				p = new Partida(jugador1, jugador2);
+				LOGGER.info("Partida creada con jugadores: {} y {}", jugador1.getNombre(), jugador2.getNombre());
+				
+				// Notificar al jugador 2 que es AEREO
+				VoMensaje mensaje = new VoMensaje(nombre, Equipo.AEREO);
+				String respuesta = mapper.writeValueAsString(mensaje);
+				messagingTemplate.convertAndSend("/topic/game", respuesta);
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error al crear jugador: {}", e.getMessage(), e);
 		}
 	}
 		
@@ -180,8 +197,10 @@ public class GameHandler {
 	public String mensajeRetorno() {
 		String t = null;
 		try {
-			t = mapper.writeValueAsString(p.getFasePartida());
-			LOGGER.debug("Estado del juego serializado: {}", t);
+			// Crear VoMensaje con la fase y la grilla completa
+			VoMensaje mensaje = new VoMensaje(p.getFasePartida(), p.getTablero());
+			t = mapper.writeValueAsString(mensaje);
+			LOGGER.debug("Estado del juego serializado");
 		} catch (Exception e) {
 			LOGGER.error("Error al serializar el estado del juego", e);
 		}

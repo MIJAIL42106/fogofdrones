@@ -3,9 +3,13 @@ gameState = {
     colorRojo: 0xffaaaa,                        //
     ancho: 64,                                  // cantidad de celdas horizontales
     alto: 36,                                    // cantidad de celdas verticales
+    tableroX: 45, 
+    tableroY: 55,
     miTurno: false,
     celdas: 0,
-    fase: 0
+    fase: 0,
+    equipo: "",
+    drones: []
 }; 
 
 const mensaje = {
@@ -19,53 +23,27 @@ const mensaje = {
 
 class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
-        this.res = 22.45;                       // escala de posiciones
-                                                // añade imagen en posicion correspondiente a indices con escalas aplciadas // remplazar por rectangulos
-        this.tile = grid.add.image((x*this.res),(y*this.res),"tileT").setScale(1.45);  // tambien escala la imagen
-        this.tile.setAlpha(0.5);                // ajuste de opacidad para celdas de grilla
+        this.res = 22.36;                       // escala de posiciones
+                                                // añade rectangulo en posicion correspondiente a indices
+        this.tile = grid.add.rectangle(x*this.res, y*this.res, 23, 23, 0x334455).setStrokeStyle(1, 0x9398c36e);
+        this.tile.setAlpha(0.6);                // ajuste de opacidad para celdas de grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
         this.tile.on('pointerdown', () => {     // asigna interaccion al clikear
             if (gameState.fase === 0) {
+                mensaje.xi = x;
+                mensaje.yi = y;
+            } else {
                 if (gameState.celdas % 2 === 0){
                     gameState.celdas ++;
                     mensaje.xi = x;
                     mensaje.yi = y;
-                    this.tile.setTint(0x44ff44); 
-                } else {
-                    grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).clearTint();
-                    
-                    mensaje.xi = 0;
-                    mensaje.yi = 0;
-
-                    gameState.celdas = 0;
-                }
-
-            } else {
-                if (gameState.celdas % 3 === 0){
-                    gameState.celdas ++;
-                    mensaje.xi = x;
-                    mensaje.yi = y;
-                    this.tile.setTint(0x44ff44); 
-                } else if (gameState.celdas % 3 === 1) {
+                } else if (gameState.celdas % 2 === 1) {
                     mensaje.xf = x;
                     mensaje.yf = y;
-                    gameState.celdas ++;
-                    this.tile.setTint(0xff44ff); 
-                } else {
-                    grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).clearTint();
-                    grid.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).clearTint();
-                    
-                    mensaje.xi = 0;
-                    mensaje.yi = 0;
-                    mensaje.xf = 0;
-                    mensaje.yf = 0;
-
                     gameState.celdas = 0;
                 }
             }
-            //this.tile.setTint(0x44ff44);                              // cambia tint de celda
-            //grid.enviarMensage((y+(x*gameState.ancho)).toString());   // se envia el mensaje con indice de celda pintada como string
         });
         
         this.tile.on('pointerover', () => {
@@ -73,7 +51,7 @@ class Celda {                                   // calse celda para grilla
             grid.indy.setText("Y: "+y);
         });
         
-        grid.tablero.add(this.tile);            // agrega la imagen creada a el tablero
+        grid.tablero.add(this.tile);            // agrega el rectangulo creado a el tablero
     }
 }   
 
@@ -88,18 +66,21 @@ class escena3 extends Phaser.Scene {
     }
                                                 // carga de assets
     preload() {                                 // fondo, escenario, tile, dronN, dronA, portaN, portaA, explosiones // ver cohete despues
-        this.load.image("tileT",".//assets/tilesets/tileT.png");
         this.load.image("Fondo",".//assets/fondos/FondoNaval.png");
+        this.load.image("Escenario",".//assets/escenarios/escenario1.png");
         this.load.image("Mover",".//assets/fondos/mover.png");
         this.load.image("Atacar",".//assets/fondos/atacar.png");
         this.load.image("Recargar",".//assets/fondos/recargar.png");
         this.load.image("Pasar",".//assets/fondos/pasar_turno.png");
+        this.load.image("PortaN",".//assets/sprites/PortaVerde-64x64x1.png");
+        this.load.image("PortaA",".//assets/sprites/PortaRojo-64x64x1.png");
+        this.load.spritesheet("DronN",".//assets/sprites/DronVerde-64x64x2.png",{frameWidth: 64, frameHeight: 64});
+        this.load.spritesheet("DronA",".//assets/sprites/DronRojo-64x64x2.png",{frameWidth: 64, frameHeight: 64});
     }
 
     create() {
+        this.graphics = this.add.graphics();
         this.crearFondo();
-        //var fondo = this.add.image(960,540,"Fondo");   // creacion de fondo en posicion    // podria calcularse centro despues
-        //fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
 
         let indice = 0;                                 // indice para pruebas de posiciones de modifciaciones de celdas
                                                         // crecion de textos de control de variables y eventos
@@ -107,23 +88,18 @@ class escena3 extends Phaser.Scene {
 
         let prueba = this.add.text(1500 , 900,"ii: "+ mensaje.nombre, { fill: "#222222", font: "40px Times New Roman"});
 
-        let indiceprueba = this.add.text(1700 , 800,"msg: ", { fill: "#222222", font: "40px Times New Roman"});
-        let pruebasi = this.add.text(1500 , 800,"faselocal: " + gameState.fase, { fill: "#222222", font: "40px Times New Roman"});
-        //let posx = this.add.text(1500 , 900,"X: ", { fill: "#222222", font: "40px Times New Roman"});//let posy = this.add.text(1500 , 1000,"Y: ", { fill: "#222222", font: "40px Times New Roman"});
+        this.indiceprueba = this.add.text(1700 , 800,"msg: ", { fill: "#222222", font: "40px Times New Roman"});
+        this.pruebasi = this.add.text(1500 , 800,"faselocal: " + gameState.fase, { fill: "#222222", font: "40px Times New Roman"});
         this.indx = this.add.text(1700 , 900,"iX: ", { fill: "#222222", font: "40px Times New Roman"});
-        this.indy = this.add.text(1700 , 1000,"iY: ", { fill: "#222222", font: "40px Times New Roman"});
+        this.indy = this.add.text(1700 , 1000,"iY: ", { fill: "#222222", font: "40px Times New Roman"});    
+        this.eq = this.add.text(1500 , 1000,"equipo: ", { fill: "#222222", font: "40px Times New Roman"});
+
+        this.drs = this.add.text(1500 , 700,"drs: " , { fill: "#222222", font: "40px Times New Roman"});
                                                         
         // Conexión STOMP con SockJS
         this.conectarSTOMP();
 
-        //this.size = gameState.ancho * gameState.alto;   // usado para asignar intreraccion a celdas en un for // puede remplazarse
-
-        // enviar nombre para crear partida
-        //jackson.setText(JSON.stringify(mensaje));
-        
-
-
-        this.tablero = this.add.container (45, 55);     // creaccion de elemento container que almacenara las celdas 
+        this.tablero = this.add.container (gameState.tableroX, gameState.tableroY);     // creaccion de elemento container que almacenara las celdas 
 
         for (var i = 0; i < gameState.alto; i++) {      // creacion de celdas en for anidado
             for (var j = 0; j< gameState.ancho; j++) {  // indeces i y j siven para calcular posicion correspondiente x e y
@@ -149,31 +125,71 @@ class escena3 extends Phaser.Scene {
             
             // Suscribirse al topic /topic/game para recibir actualizaciones
             this.stompClient.subscribe('/topic/game', (message) => {
-                var fas = JSON.parse(message.body);
+                var msg = JSON.parse(message.body);
                 
                 // Actualizar UI con el estado recibido
                 if (this.indiceprueba) {
-                    this.indiceprueba.setText("msg: " + fas);
+                    this.indiceprueba.setText("msg: " + msg.tipoMensaje);
                 }
                 
-                // Actualizar fase del juego
-                switch (fas) {
-                    case "DESPLIEGUE":
-                        gameState.fase = 0;
+                // Procesar mensaje según su tipo
+                switch (msg.tipoMensaje) {
+                    case 0: {
+                        // Mensaje de asignación de equipo
+                        if (mensaje.nombre === msg.nombre) {
+                            gameState.equipo = msg.equipo.toString();
+                        }
+                        this.eq.setText("equipo: " + gameState.equipo);
+                    } break;
+                    case 1: {
+                        // Mensaje de actualización de estado del juego
+                        switch (msg.fasePartida) {
+                            case "DESPLIEGUE":
+                                gameState.fase = 0;
+                                break;
+                            case "JUGANDO":
+                                gameState.fase = 1;
+                                break;
+                            case "MUERTE_SUBITA":
+                                gameState.fase = 2;
+                                break;
+                            case "TERMINADO":
+                                gameState.fase = 3;
+                                break;
+                        }
+                        this.pruebasi.setText("faselocal: " + gameState.fase);
+                        this.eliminarDrones();
+                        var i = 0;
+                        msg.grilla.forEach((cel) => {
+                            let celda = this.tablero.getAt(i);
+                            if (!cel.visionNaval && gameState.equipo === "NAVAL") {
+                                celda.setFillStyle(0x334455);
+                            } else if (!cel.visionAereo && gameState.equipo === "AEREO") {
+                                celda.setFillStyle(0x334455);
+                            } else if (cel.aereo !== null) {
+                                if (gameState.equipo === "AEREO" || cel.visionNaval) {
+                                    celda.setFillStyle(gameState.colorRojo);
+                                    this.dibujarDronAereo(celda.x, celda.y);
+                                }
+                            } else if (cel.naval !== null) {
+                                if (gameState.equipo === "NAVAL" || cel.visionAereo) {
+                                    celda.setFillStyle(gameState.colorVerde);
+                                    this.dibujarDronNaval(celda.x, celda.y);
+                                }
+                            } else {
+                                celda.setFillStyle(0x334455);
+                            }
+                            i++;
+                        });
+                    } break;
+                    case 2: {
+                        // Mensaje de error
+                        if (mensaje.nombre === msg.nombre) {
+                            alert(msg.error);
+                        }
+                    } break;
+                    default:
                         break;
-                    case "JUGANDO":
-                        gameState.fase = 1;
-                        break;
-                    case "MUERTE_SUBITA":
-                        gameState.fase = 2;
-                        break;
-                    case "TERMINADO":
-                        gameState.fase = 3;
-                        break;
-                }
-                
-                if (this.pruebasi) {
-                    this.pruebasi.setText("faselocal: " + gameState.fase);
                 }
             });
             
@@ -193,18 +209,20 @@ class escena3 extends Phaser.Scene {
     }*/
 
     crearFondo() {
-        var fondo = this.add.image(960,540,"Fondo");   // creacion de fondo en posicion    // podria calcularse centro despues
+        var fondo = this.add.image(960,540,"Fondo").setDepth(1);   // creacion de fondo en posicion    // podria calcularse centro despues
         fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
+        var escenario = this.add.image(38, 48,"Escenario").setOrigin(0, 0).setDepth(0);
+        escenario.setScale(1); 
         const tamBtn = 333 ;
         const sep = 35 ;
         var pos = 200 ;
-        var moverBtn = this.add.image(pos,960,"Mover").setInteractive();
+        var moverBtn = this.add.image(pos,960,"Mover").setDepth(2).setInteractive();
         pos += tamBtn + sep;
-        var atacarBtn = this.add.image(pos,960,"Atacar").setInteractive();
+        var atacarBtn = this.add.image(pos,960,"Atacar").setDepth(2).setInteractive();
         pos += tamBtn + sep;
-        var recargarBtn = this.add.image(pos,960,"Recargar").setInteractive();
+        var recargarBtn = this.add.image(pos,960,"Recargar").setDepth(2).setInteractive();
         pos += tamBtn + sep;
-        var pasarBtn = this.add.image(pos,960,"Pasar").setInteractive();
+        var pasarBtn = this.add.image(pos,960,"Pasar").setDepth(2).setInteractive();
 
         moverBtn.on('pointerover', function() {     // asigna interaccion al clikear 
             moverBtn.setTint(0x44ff44);               
@@ -247,6 +265,30 @@ class escena3 extends Phaser.Scene {
             jackson.setText(JSON.stringify(mensaje));
             this.enviarMensage(JSON.stringify(mensaje));               
         });
+    }
+
+    dibujarDronNaval (x, y) {
+        var xAbs = x + gameState.tableroX;
+        var yAbs = y + gameState.tableroY;
+        let dron = this.add.sprite(xAbs , yAbs ,"DronN").setScale(1.5).setDepth(2);
+        dron.angle = -90;
+        gameState.drones.push(dron);
+    }
+
+    dibujarDronAereo (x, y) {
+        var xAbs = x + gameState.tableroX;
+        var yAbs = y + gameState.tableroY;
+        let dron = this.add.sprite(xAbs, yAbs ,"DronA").setScale(1.5).setDepth(2);
+        dron.angle = 90;
+        gameState.drones.push(dron);
+    }
+
+    eliminarDrones(){
+        for (let i = 0; i < gameState.drones.length; i++) {
+            const d = gameState.drones[i];
+            d.destroy();
+        }
+        gameState.drones.length = 0;
     }
 
     /**

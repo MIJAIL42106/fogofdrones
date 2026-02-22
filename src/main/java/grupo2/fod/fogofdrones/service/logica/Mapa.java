@@ -29,6 +29,22 @@ public class Mapa implements Serializable {
         return ancho;
     }
 
+    public Celda[][] getGrilla() {
+        return grilla;
+    }
+
+    public Celda[] getGrillaLineal() {
+        Celda[] grillaLineal = new Celda[largo * ancho];
+        int indice = 0;
+        for(int j = 0; j < ancho; j++) {
+            for(int i = 0; i < largo; i++) {
+                grillaLineal[indice] = grilla[i][j];
+                indice++;
+            }
+        }
+        return grillaLineal;
+    }
+
     public Celda getCelda(Posicion pos) {
         return grilla[pos.getX()][pos.getY()];
     }
