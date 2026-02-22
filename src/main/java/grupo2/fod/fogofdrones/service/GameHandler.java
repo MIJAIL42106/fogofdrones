@@ -121,6 +121,11 @@ public class GameHandler {
 				VoMensaje mensaje = new VoMensaje(nombre, Equipo.AEREO);
 				String respuesta = mapper.writeValueAsString(mensaje);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
+				
+				// Enviar estado inicial del juego a todos los jugadores
+				String estadoInicial = mensajeRetorno();
+				messagingTemplate.convertAndSend("/topic/game", estadoInicial);
+				LOGGER.info("Estado inicial de la partida enviado a todos los jugadores");
 			}
 		} catch (Exception e) {
 			LOGGER.error("Error al crear jugador: {}", e.getMessage(), e);

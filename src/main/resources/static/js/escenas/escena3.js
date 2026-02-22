@@ -117,7 +117,7 @@ class escena3 extends Phaser.Scene {
         this.stompClient = Stomp.over(socket);
         
         // Deshabilitar logs de debug (opcional)
-        this.stompClient.debug = null;
+        // this.stompClient.debug = null;
         
         // Conectar al servidor STOMP
         this.stompClient.connect({}, (frame) => {
@@ -126,6 +126,8 @@ class escena3 extends Phaser.Scene {
             // Suscribirse al topic /topic/game para recibir actualizaciones
             this.stompClient.subscribe('/topic/game', (message) => {
                 var msg = JSON.parse(message.body);
+                
+                console.log("Mensaje recibido:", msg);
                 
                 // Actualizar UI con el estado recibido
                 if (this.indiceprueba) {
@@ -136,6 +138,7 @@ class escena3 extends Phaser.Scene {
                 switch (msg.tipoMensaje) {
                     case 0: {
                         // Mensaje de asignación de equipo
+                        console.log("Asignación de equipo:", msg.equipo, "para:", msg.nombre);
                         if (mensaje.nombre === msg.nombre) {
                             gameState.equipo = msg.equipo.toString();
                         }
@@ -143,6 +146,7 @@ class escena3 extends Phaser.Scene {
                     } break;
                     case 1: {
                         // Mensaje de actualización de estado del juego
+                        console.log("Actualizando grilla, fase:", msg.fasePartida, "grilla size:", msg.grilla ? msg.grilla.length : 0);
                         switch (msg.fasePartida) {
                             case "DESPLIEGUE":
                                 gameState.fase = 0;
@@ -160,8 +164,15 @@ class escena3 extends Phaser.Scene {
                         this.pruebasi.setText("faselocal: " + gameState.fase);
                         this.eliminarDrones();
                         var i = 0;
+                        var dronesContados = 0;
                         msg.grilla.forEach((cel) => {
                             let celda = this.tablero.getAt(i);
+                            if (!celda) {
+                                console.error("No se encontró celda en índice:", i);
+                                i++;
+                                return;
+                            }
+                            
                             if (!cel.visionNaval && gameState.equipo === "NAVAL") {
                                 celda.setFillStyle(0x334455);
                             } else if (!cel.visionAereo && gameState.equipo === "AEREO") {
@@ -170,30 +181,36 @@ class escena3 extends Phaser.Scene {
                                 if (gameState.equipo === "AEREO" || cel.visionNaval) {
                                     celda.setFillStyle(gameState.colorRojo);
                                     this.dibujarDronAereo(celda.x, celda.y);
+                                    dronesContados++;
                                 }
                             } else if (cel.naval !== null) {
                                 if (gameState.equipo === "NAVAL" || cel.visionAereo) {
                                     celda.setFillStyle(gameState.colorVerde);
                                     this.dibujarDronNaval(celda.x, celda.y);
+                                    dronesContados++;
                                 }
                             } else {
                                 celda.setFillStyle(0x334455);
                             }
                             i++;
                         });
+                        console.log("Drones dibujados:", dronesContados);
                     } break;
                     case 2: {
                         // Mensaje de error
+                        console.log("Error recibido:", msg.error);
                         if (mensaje.nombre === msg.nombre) {
                             alert(msg.error);
                         }
                     } break;
                     default:
+                        console.warn("Tipo de mensaje desconocido:", msg.tipoMensaje);
                         break;
                 }
             });
             
             // Enviar mensaje inicial para unirse a la partida
+            console.log("Enviando mensaje inicial:", mensaje);
             this.enviarMensage(JSON.stringify(mensaje));
             
         }, (error) => {
@@ -298,7 +315,9 @@ class escena3 extends Phaser.Scene {
     enviarMensage(data) {
         if (this.stompClient && this.stompClient.connected) {
             // Enviar mensaje a /app/accion (el servidor lo recibe en @MessageMapping("/accion"))
+            console.log("ENVIANDO al servidor:", data);
             this.stompClient.send("/app/accion", {}, data);
+            console.log("Mensaje enviado exitosamente");
         } else {
             console.error('Cliente STOMP no está conectado');
         }
