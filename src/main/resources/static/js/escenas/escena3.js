@@ -3,10 +3,13 @@ gameState = {
     colorRojo: 0xffaaaa,                        //
     ancho: 64,                                  // cantidad de celdas horizontales
     alto: 36,                                    // cantidad de celdas verticales
+    tableroX: 50, 
+    tableroY: 60,
     miTurno: false,
     celdas: 0,
     fase: 0,
-    equipo: ""
+    equipo: "",
+    drones: []
 }; 
 
 const mensaje = {
@@ -18,11 +21,23 @@ const mensaje = {
     yf: 0
 };
 
+//const drones = []
+/*
+class Dron {
+    dron;
+    constructor (x, y, equipo) {
+        var xAbs = x + gameState.tableroX;
+        var yAbs = y + gameState.tableroY;
+        if (equipo === NAVAL)
+        dron = this.add.sprite(xAbs , yAbs ,"DronN").setScale(1.5).setDepth(2).angle = -90;
+    }
+}*/
+
 class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
         this.res = 22.36;                       // escala de posiciones
                                                 // añade imagen en posicion correspondiente a indices con escalas aplciadas // remplazar por rectangulos
-        this.tile = grid.add.rectangle(x*this.res, y*this.res, 23, 23, 0x334455).setStrokeStyle(1, 0xffffff);;// grid.add.image((x*this.res),(y*this.res),"tileT").setScale(1.45);  // tambien escala la imagen
+        this.tile = grid.add.rectangle(x*this.res, y*this.res, 23, 23, 0x334455).setStrokeStyle(1, 0x9398c36e);// grid.add.image((x*this.res),(y*this.res),"tileT").setScale(1.45);  // tambien escala la imagen
         this.tile.setAlpha(0.6);                // ajuste de opacidad para celdas de grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
@@ -106,6 +121,8 @@ class escena3 extends Phaser.Scene {
         this.indx = this.add.text(1700 , 900,"iX: ", { fill: "#222222", font: "40px Times New Roman"});
         this.indy = this.add.text(1700 , 1000,"iY: ", { fill: "#222222", font: "40px Times New Roman"});    
         let eq = this.add.text(1500 , 1000,"equipo: ", { fill: "#222222", font: "40px Times New Roman"});
+
+        let drs = this.add.text(1500 , 700,"drs: " , { fill: "#222222", font: "40px Times New Roman"});
                                                         // creacion de conexion a websocket
         // agregar otra capa intermedia para la conexion
         this.socket = new WebSocket('ws://26.169.248.78:8080/game'); // http://26.169.248.78:8080/game  ws://localhost:8080/game
@@ -115,16 +132,16 @@ class escena3 extends Phaser.Scene {
         // enviar nombre para crear partida
         //jackson.setText(JSON.stringify(mensaje));
         
+        //this.dibujarDronNaval(960,540);
 
-
-        this.tablero = this.add.container (50, 60);     // creaccion de elemento container que almacenara las celdas 
+        this.tablero = this.add.container (gameState.tableroX, gameState.tableroY);     // creaccion de elemento container que almacenara las celdas 
 
         for (var i = 0; i < gameState.alto; i++) {      // creacion de celdas en for anidado
             for (var j = 0; j< gameState.ancho; j++) {  // indeces i y j siven para calcular posicion correspondiente x e y
                 new Celda(this,i,j);                    // al crearse la celda se agrega sola a container tablero
             }
         } 
-        
+
         this.socket.onopen = () => {
             this.enviarMensage(JSON.stringify(mensaje));
         };
@@ -132,6 +149,7 @@ class escena3 extends Phaser.Scene {
         this.socket.onmessage = (event) => {            // arrow function conserva this de objeto padre o donde se invoca
             var msg = JSON.parse(event.data);
             indiceprueba.setText("msg: " + msg.tipoMensaje);
+            
             switch (msg.tipoMensaje) {
                 case 0 : {
                     if (mensaje.nombre === msg.nombre) {
@@ -155,20 +173,26 @@ class escena3 extends Phaser.Scene {
                             break;
                     }
                     pruebasi.setText("faselocal: " + gameState.fase);
+                    this.eliminarDrones();
                     var i = 0;
                     msg.grilla.forEach((cel) => {
+                        let celda = this.tablero.getAt(i);
                         if (!cel.visionNaval && gameState.equipo === "NAVAL" ) {
-                            this.tablero.getAt(i).setFillStyle(0x000000);
+                            celda.setFillStyle(0x334455);
                         } else if (!cel.visionAereo && gameState.equipo === "AEREO" ) {
-                            this.tablero.getAt(i).setFillStyle(0x000000);
+                            celda.setFillStyle(0x334455);
                         } else if (cel.aereo !== null ) {
-                            if (gameState.equipo === "AEREO" || cel.visionNaval) 
-                                this.tablero.getAt(i).setFillStyle(gameState.colorRojo);
+                            if (gameState.equipo === "AEREO" || cel.visionNaval) {
+                                celda.setFillStyle(gameState.colorRojo);
+                                this.dibujarDronAereo(celda.x, celda.y);
+                            }
                         } else if (cel.naval !== null) {
-                            if (gameState.equipo === "NAVAL" || cel.visionAereo)
-                                this.tablero.getAt(i).setFillStyle(gameState.colorVerde);
+                            if (gameState.equipo === "NAVAL" || cel.visionAereo) {
+                                celda.setFillStyle(gameState.colorVerde);
+                                this.dibujarDronNaval(celda.x, celda.y);
+                            }
                         } else {
-                            this.tablero.getAt(i).setFillStyle();//clearTint();
+                            celda.setFillStyle();//clearTint();
                         }
                         i++;
                     });
@@ -269,6 +293,37 @@ class escena3 extends Phaser.Scene {
         });
     }
 
+    dibujarDronNaval (x, y) {
+        var xAbs = x + gameState.tableroX;
+        var yAbs = y + gameState.tableroY;
+        let dron = this.add.sprite(xAbs , yAbs ,"DronN").setScale(1.5).setDepth(2);
+        dron.angle = -90;
+        gameState.drones.push(dron);
+        //drones.push(dron);
+        //dron.setTint(0x000000);
+    }
+
+    dibujarDronAereo (x, y) {
+        var xAbs = x + gameState.tableroX;
+        var yAbs = y + gameState.tableroY;
+        let dron = this.add.sprite(xAbs, yAbs ,"DronA").setScale(1.5).setDepth(2);
+        dron.angle = 90;
+        gameState.drones.push(dron);
+        //drones.push(dron);
+        //dron.setTint(0x000000);
+    }
+
+    eliminarDrones(){
+        //if (!gameState.drones || gameState.drones.length === 0) return;
+        for (let i = 0; i < gameState.drones.length; i++) {
+            const d = gameState.drones[i];
+            d.destroy();
+            
+        }
+        gameState.drones.length = 0;
+
+    }
+
     enviarMensage(indice) {                             // envia mensaje del indice por websocket
         this.socket.send(indice);
     }
@@ -281,6 +336,7 @@ class escena3 extends Phaser.Scene {
     }
     
     update() {
+        //gameState.dron.anims.play('idle',true);
     }
 }
 

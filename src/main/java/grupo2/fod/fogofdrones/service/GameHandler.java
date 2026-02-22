@@ -158,7 +158,7 @@ public class GameHandler extends TextWebSocketHandler {
 				String t = mapper.writeValueAsString(mensaje);
 				respuesta = new TextMessage(t);
 
-			} else if (jugador2 == null && jugador1.getNombre().equals(nombre)) {
+			} else if (jugador2 == null && !jugador1.getNombre().equals(nombre)) {
 				jugador2 = new Jugador(nombre, 0, 0); 
 				System.out.println("Jugador 2 creado: " + jugador2.getNombre());
 				p = new Partida(jugador1,jugador2);
