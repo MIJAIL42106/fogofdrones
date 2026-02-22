@@ -462,6 +462,14 @@ public class Partida implements Serializable {
         return recargo;
     }
 
-
+    public boolean esMiTurno(String nombreJugador) {
+        boolean es = false;
+        if (turno == Equipo.NAVAL && jugadorNaval.getNombre().equals(nombreJugador)) {
+            es = true;
+        } else if (turno == Equipo.AEREO && jugadorAereo.getNombre().equals(nombreJugador)) {
+            es = true;
+        }
+        return es;
+    }
 
 }

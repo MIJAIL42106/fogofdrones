@@ -1,52 +1,202 @@
 package grupo2.fod.fogofdrones.service;
 
-// tipo de lista optimizada para concurrencia
-// no util si hay constante modificacion
-// probablemente necesitemos otro tipo de lista
-import java.io.IOException;
-import java.util.concurrent.CopyOnWriteArrayList;
+import grupo2.fod.fogofdrones.service.logica.Partida;
+import grupo2.fod.fogofdrones.service.logica.Jugador;
+import grupo2.fod.fogofdrones.service.logica.Posicion;
+import grupo2.fod.fogofdrones.service.logica.FasePartida;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.stereotype.Service;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SubscribeMapping;
+import org.springframework.stereotype.Controller;
 
-// administra las conecciones al web socket
-@Service
-public class GameHandler extends TextWebSocketHandler {
+// Controlador que administra las conexiones STOMP para el juego
+@Controller
+public class GameHandler {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameHandler.class);
-	// mapa de partidas y sesiones de partidas 
-	private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<WebSocketSession>();
-
-	@Override
-	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-		// que hago cuando se establece una coneccion al socket
-		// agregarlo a lista de sessions
-		sessions.add(session);
-	}
 	
-	@Override
-	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-		// que hago despues de que se cierra una coneccion
-		// remuevo la sesion pasada por parametro de sessions
-		sessions.remove(session);
-	}
+	@Autowired
+	private SimpMessagingTemplate messagingTemplate;
 	
-	@Override
-	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-		// enviar a los receptores el mensaje que haya enviado un usuario
-		// al recibir un mensaje lo distribuye a todas las sesiones activas
-		for (WebSocketSession webSocketSession : sessions) {
-			try {
-				webSocketSession.sendMessage(message);
-			} catch (IOException e) {
-				LOGGER.error(e.getMessage(),e);
+	private ObjectMapper mapper = new ObjectMapper();
+	
+	// Mapa de partidas activas (para manejar múltiples juegos simultáneos)
+	// En esta versión simple, usamos una sola partida global
+	private Partida p = null;
+	private Jugador jugador1 = null;
+	private Jugador jugador2 = null;
+	
+	// Map para trackear sesiones de jugadores (opcional, para futuras mejoras)
+	private final ConcurrentHashMap<String, String> jugadorSessions = new ConcurrentHashMap<>();
+	
+	/**
+	 * Endpoint principal que maneja todas las acciones del juego
+	 * Los clientes envían mensajes a /app/accion
+	 * Las respuestas se envían a /topic/game para que todos los suscritos las reciban
+	 */
+	@MessageMapping("/accion")
+	public void handleAction(@Payload Map<String, Object> data) {
+		try {
+			String nombre = (String) data.get("nombre");
+			
+			LOGGER.info("Acción recibida de: {}", nombre);
+			
+			// Si no hay partida, intentar crear jugadores
+			if (p == null) {
+				handleCrearJugador(nombre);
+			} else if (p.esMiTurno(nombre)) {
+				// Si es el turno del jugador, procesar la acción
+				String accion = (String) data.get("accion");
+				LOGGER.info("{} - {}", nombre, accion);
+				
+				if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
+					handleDesplegar(data);
+				} else {
+					switch (accion) {
+						case "MOVER":
+							handleMover(data);
+							break;
+						case "ATACAR":
+							handleAtacar(data);
+							break;
+						case "RECARGAR":
+							handleRecargar(data);
+							break;
+						default:
+							LOGGER.warn("Acción desconocida: {}", accion);
+							break;
+					}
+				}
+				
+				// Enviar estado actualizado a todos los clientes
+				String respuesta = mensajeRetorno();
+				messagingTemplate.convertAndSend("/topic/game", respuesta);
+				
+			} else {
+				LOGGER.info("No es tu turno: {}", nombre);
 			}
+			
+		} catch (Exception e) {
+			LOGGER.error("Error procesando acción: {}", e.getMessage(), e);
 		}
 	}
+	
+	/**
+	 * Maneja la creación de jugadores y partida
+	 */
+	private void handleCrearJugador(String nombre) {
+		if (jugador1 == null) {
+			jugador1 = new Jugador(nombre, 0, 0);
+			LOGGER.info("Jugador 1 creado: {}", jugador1.getNombre());
+		} else if (jugador2 == null) {
+			jugador2 = new Jugador(nombre, 0, 0);
+			LOGGER.info("Jugador 2 creado: {}", jugador2.getNombre());
+			p = new Partida(jugador1, jugador2);
+			LOGGER.info("Partida creada con jugadores: {} y {}", jugador1.getNombre(), jugador2.getNombre());
+			
+			// Notificar a todos que la partida ha comenzado
+			String respuesta = mensajeRetorno();
+			messagingTemplate.convertAndSend("/topic/game", respuesta);
+		}
+	}
+		
+	/**
+	 * Maneja el despliegue de drones en la fase inicial
+	 */
+	public void handleDesplegar(Map<String, Object> data) {
+		int x = (int) data.get("xi");
+		int y = (int) data.get("yi");
+		Posicion pos = new Posicion(x, y);
+
+		p.desplegarDron(pos);
+
+		LOGGER.info("Dron desplegado en: {}, {}", x, y);
+		LOGGER.info("Turno: {}", p.getTurno());
+	}
+
+	/**
+	 * Maneja el movimiento de drones
+	 */
+	public void handleMover(Map<String, Object> data) {
+		int xi = (int) data.get("xi");
+		int yi = (int) data.get("yi");
+		Posicion posi = new Posicion(xi, yi);
+		int xf = (int) data.get("xf");
+		int yf = (int) data.get("yf");
+		Posicion posf = new Posicion(xf, yf);
+		
+		p.mover(posi, posf);
+		p.terminarTurno();
+
+		LOGGER.info("Dron se movió desde: {}, {} hasta: {}, {}", xi, yi, xf, yf);
+		LOGGER.info("Turno: {}", p.getTurno());
+	}
+
+	/**
+	 * Maneja los ataques entre drones
+	 */
+	public void handleAtacar(Map<String, Object> data) {
+		int xi = (int) data.get("xi");
+		int yi = (int) data.get("yi");
+		Posicion posi = new Posicion(xi, yi);
+		int xf = (int) data.get("xf");
+		int yf = (int) data.get("yf");
+		Posicion posf = new Posicion(xf, yf);
+		
+		p.atacar(posi, posf);
+		p.terminarTurno();
+
+		LOGGER.info("Dron atacó desde: {}, {} hasta: {}, {}", xi, yi, xf, yf);
+		LOGGER.info("Turno: {}", p.getTurno());
+	}
+
+	/**
+	 * Maneja la recarga de munición
+	 */
+	public void handleRecargar(Map<String, Object> data) {
+		int x = (int) data.get("xi");
+		int y = (int) data.get("yi");
+		Posicion pos = new Posicion(x, y);
+		
+		p.recargarMunicion(pos);
+
+		LOGGER.info("Dron recargó munición en: {}, {}", x, y);
+		LOGGER.info("Turno: {}", p.getTurno());
+	}
+
+	/**
+	 * Genera el mensaje de retorno con el estado actual del juego
+	 */
+	public String mensajeRetorno() {
+		String t = null;
+		try {
+			t = mapper.writeValueAsString(p.getFasePartida());
+			LOGGER.debug("Estado del juego serializado: {}", t);
+		} catch (Exception e) {
+			LOGGER.error("Error al serializar el estado del juego", e);
+		}
+		return t;
+	}
+	
+	/**
+	 * Método opcional para reiniciar la partida
+	 */
+	public void reiniciarPartida() {
+		this.p = null;
+		this.jugador1 = null;
+		this.jugador2 = null;
+		this.jugadorSessions.clear();
+		LOGGER.info("Partida reiniciada");
+	}
+
 }

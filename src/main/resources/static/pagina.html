@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elden Ring Online Real</title>
+    
+    <!-- Bibliotecas para WebSocket STOMP -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </head>
 <body>
     <h1>hola</h1>
@@ -35,7 +39,18 @@
     <p>ayuda?</p>
     <!--<img src="assets/eldenmiedo.jpg" alt="alterantivo" width="500" height="100">    -->
     <script>
-	    let socket = new WebSocket("ws://localhost:8080/game");
+        // Conexión STOMP en lugar de WebSocket simple
+        const socket = new SockJS('http://localhost:8080/game');
+        const stompClient = Stomp.over(socket);
+        
+        stompClient.connect({}, function(frame) {
+            console.log('Conectado a STOMP: ' + frame);
+            
+            // Suscribirse al topic para recibir mensajes
+            stompClient.subscribe('/topic/game', function(message) {
+                console.log('Mensaje recibido: ' + message.body);
+            });
+        });
     </script>
 </body>
 </html>

@@ -1,25 +1,31 @@
 package grupo2.fod.fogofdrones.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import grupo2.fod.fogofdrones.service.GameHandler;
-
-// aqui se define el servidor socket o simplemente socket
+// Configuración del servidor WebSocket con STOMP
 
 @Configuration
-@EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
-	
-	@Autowired
-	private GameHandler gameHandler;
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	
 	@Override
-	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-		registry.addHandler(gameHandler,"/game").setAllowedOrigins("*"); //(objeto chathandler,url a la que se conectan)
+	public void configureMessageBroker(MessageBrokerRegistry config) {
+		// Habilita un simple broker de mensajes en memoria con prefijo /topic para broadcast
+		config.enableSimpleBroker("/topic", "/queue");
+		// Prefijo para mensajes enviados desde el cliente
+		config.setApplicationDestinationPrefixes("/app");
+	}
+	
+	@Override
+	public void registerStompEndpoints(StompEndpointRegistry registry) {
+		// Registra el endpoint STOMP, permitiendo fallback a SockJS
+		registry.addEndpoint("/game")
+				.setAllowedOrigins("*")
+				.withSockJS();
 	}
 
 }
