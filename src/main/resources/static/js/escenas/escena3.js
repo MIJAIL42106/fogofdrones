@@ -112,9 +112,9 @@ class escena3 extends Phaser.Scene {
         //let posx = this.add.text(1500 , 900,"X: ", { fill: "#222222", font: "40px Times New Roman"});//let posy = this.add.text(1500 , 1000,"Y: ", { fill: "#222222", font: "40px Times New Roman"});
         this.indx = this.add.text(1700 , 900,"iX: ", { fill: "#222222", font: "40px Times New Roman"});
         this.indy = this.add.text(1700 , 1000,"iY: ", { fill: "#222222", font: "40px Times New Roman"});
-                                                        // creacion de conexion a websocket
-        // agregar otra capa intermedia para la conexion
-        this.socket = new WebSocket('ws://26.169.248.78:8080/game'); // http://26.169.248.78:8080/game  ws://localhost:8080/game
+                                                        
+        // Conexión STOMP con SockJS
+        this.conectarSTOMP();
 
         //this.size = gameState.ancho * gameState.alto;   // usado para asignar intreraccion a celdas en un for // puede remplazarse
 
@@ -130,42 +130,61 @@ class escena3 extends Phaser.Scene {
                 new Celda(this,i,j);                    // al crearse la celda se agrega sola a container tablero
             }
         } 
-        
-        this.socket.onopen = () => {
-            this.enviarMensage(JSON.stringify(mensaje));
-        };
+    }
 
-        this.socket.onmessage = (event) => {            // arrow function conserva this de objeto padre o donde se invoca
-            var fas = JSON.parse(event.data);
-            indiceprueba.setText("msg: " + fas);
-            switch (fas){
-                case "DESPLIEGUE" :
-                    gameState.fase = 0;
-                    break;
-                case "JUGANDO" :
-                    gameState.fase = 1;
-                    break;
-                case "MUERTE_SUBITA" :
-                    gameState.fase = 2;
-                    break;
-                case "TERMINADO" :
-                    gameState.fase = 3;
-                    break;
-            }
-            pruebasi.setText("faselocal: " + gameState.fase);
-            //indice = parseInt(event.data);              // event.data contiene string mensaje de logica, lo parseamos a int para indice
-            //indiceprueba.setText("i: " + indice);       // texto de variable de prueba i indice antes de pintar
-                                                        // una forma mas corta que funciona pero pintarcelda puede ser util
-            //this.tablero.getAt(event.data).setTint(0xff44ff);
+    /**
+     * Establece la conexión STOMP usando SockJS
+     */
+    conectarSTOMP() {
+        // Crear socket con SockJS
+        const socket = new SockJS('http://26.169.248.78:8080/game'); // Para producción: window.location.origin + '/game'
+        this.stompClient = Stomp.over(socket);
+        
+        // Deshabilitar logs de debug (opcional)
+        this.stompClient.debug = null;
+        
+        // Conectar al servidor STOMP
+        this.stompClient.connect({}, (frame) => {
+            console.log('Conectado a STOMP: ' + frame);
             
+            // Suscribirse al topic /topic/game para recibir actualizaciones
+            this.stompClient.subscribe('/topic/game', (message) => {
+                var fas = JSON.parse(message.body);
+                
+                // Actualizar UI con el estado recibido
+                if (this.indiceprueba) {
+                    this.indiceprueba.setText("msg: " + fas);
+                }
+                
+                // Actualizar fase del juego
+                switch (fas) {
+                    case "DESPLIEGUE":
+                        gameState.fase = 0;
+                        break;
+                    case "JUGANDO":
+                        gameState.fase = 1;
+                        break;
+                    case "MUERTE_SUBITA":
+                        gameState.fase = 2;
+                        break;
+                    case "TERMINADO":
+                        gameState.fase = 3;
+                        break;
+                }
+                
+                if (this.pruebasi) {
+                    this.pruebasi.setText("faselocal: " + gameState.fase);
+                }
+            });
             
-            ////this.pintarCelda(event.data);               // llama a pintar celda donde se cambia el tint de la celda con ese indice
-            ////posx.setText("X: "+ Phaser.Math.RoundTo(celda.x, 0) );//posy.setText("Y: "+ Phaser.Math.RoundTo(celda.y, 0) );  
-            //indx.setText("iX: "+ Phaser.Math.ToXY(indice, gameState.ancho, gameState.alto).x);
-            //indy.setText("iY: "+ Phaser.Math.ToXY(indice, gameState.ancho, gameState.alto).y);
-            //pruebasi.setText("ii: " + indice);          // texto de variable de prueba i indice luego de pintar
-        }                                     
-        //let celda = this.tablero.getAt(indice);          // obtenemos la celda del tablero con indice l
+            // Enviar mensaje inicial para unirse a la partida
+            this.enviarMensage(JSON.stringify(mensaje));
+            
+        }, (error) => {
+            console.error('Error de conexión STOMP: ' + error);
+            // Intentar reconectar después de 5 segundos
+            setTimeout(() => this.conectarSTOMP(), 5000);
+        });
     }
     /*
     pintarCelda(indice1){                               // pinta celda 
@@ -230,14 +249,27 @@ class escena3 extends Phaser.Scene {
         });
     }
 
-    enviarMensage(indice) {                             // envia mensaje del indice por websocket
-        this.socket.send(indice);
+    /**
+     * Envía un mensaje al servidor mediante STOMP
+     * @param {string} data - Datos en formato JSON string a enviar
+     */
+    enviarMensage(data) {
+        if (this.stompClient && this.stompClient.connected) {
+            // Enviar mensaje a /app/accion (el servidor lo recibe en @MessageMapping("/accion"))
+            this.stompClient.send("/app/accion", {}, data);
+        } else {
+            console.error('Cliente STOMP no está conectado');
+        }
     }
 
-    apagar() {                                        // no usado pero util al acabar partida y volver a menu
-        // Cerrar WebSocket
-        if (this.socket) {
-            this.socket.close();
+    /**
+     * Cierra la conexión STOMP al salir de la escena
+     */
+    apagar() {
+        if (this.stompClient && this.stompClient.connected) {
+            this.stompClient.disconnect(() => {
+                console.log('Desconectado de STOMP');
+            });
         }
     }
     

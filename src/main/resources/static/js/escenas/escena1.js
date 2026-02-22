@@ -83,17 +83,27 @@ class escena1 extends Phaser.Scene {
         this.domElements = [this.nombreInput];
     }
 
-    connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;                  // funciona sin estas dos lineas
+    /**
+     * NOTA: El método connectWebSocket está comentado porque la conexión
+     * se realiza directamente en escena3.js cuando empieza la partida.
+     * Si necesitas funcionalidad de chat, puedes descomentar y adaptar este método.
+     */
+    /*
+    conectarSTOMP() {
+        const socket = new SockJS(window.location.origin + '/game');
+        this.stompClient = Stomp.over(socket);
         
-        this.socket = new WebSocket('http://26.169.248.78:8080/game'); // http://26.169.248.78:8080/game  ws://localhost:8080/game
-
-        // al recivir
-        this.socket.onmessage = (event) => {
-            this.addMessage(event.data);
-        };
+        this.stompClient.connect({}, (frame) => {
+            console.log('Conectado a STOMP: ' + frame);
+            
+            this.stompClient.subscribe('/topic/game', (message) => {
+                this.addMessage(message.body);
+            });
+        }, (error) => {
+            console.error('Error de conexión STOMP: ' + error);
+        });
     }
+    */
 /*
     sendMessage() {
         const nombre = this.nombreInput.value.trim();
@@ -142,9 +152,9 @@ class escena1 extends Phaser.Scene {
     }*/
 
     shutdown() {
-        // Cerrar WebSocket
-        if (this.socket) {
-            this.socket.close();
+        // Cerrar conexión STOMP si existe
+        if (this.stompClient && this.stompClient.connected) {
+            this.stompClient.disconnect();
         }
         if (this.domElements) {
             this.domElements.forEach(element => {

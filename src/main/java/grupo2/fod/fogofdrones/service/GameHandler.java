@@ -1,210 +1,202 @@
 package grupo2.fod.fogofdrones.service;
 
-import grupo2.fod.fogofdrones.service.logica.Partida;	///////////////////////////////////////////////////////////////////////////////////////
+import grupo2.fod.fogofdrones.service.logica.Partida;
 import grupo2.fod.fogofdrones.service.logica.Jugador;
 import grupo2.fod.fogofdrones.service.logica.Posicion;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Map;  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 import grupo2.fod.fogofdrones.service.logica.FasePartida;
 
-// tipo de lista optimizada para concurrencia
-// no util si hay constante modificacion
-// probablemente necesitemos otro tipo de lista
-import java.io.IOException;
-import java.util.concurrent.CopyOnWriteArrayList;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.stereotype.Service;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.handler.TextWebSocketHandler;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SubscribeMapping;
+import org.springframework.stereotype.Controller;
 
-// administra las conecciones al web socket
-@Service
-public class GameHandler extends TextWebSocketHandler {
+// Controlador que administra las conexiones STOMP para el juego
+@Controller
+public class GameHandler {
 	
-	private Partida p = null;	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private static final Logger LOGGER = LoggerFactory.getLogger(GameHandler.class);
+	
+	@Autowired
+	private SimpMessagingTemplate messagingTemplate;
+	
 	private ObjectMapper mapper = new ObjectMapper();
+	
+	// Mapa de partidas activas (para manejar múltiples juegos simultáneos)
+	// En esta versión simple, usamos una sola partida global
+	private Partida p = null;
 	private Jugador jugador1 = null;
 	private Jugador jugador2 = null;
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(GameHandler.class);
-	// mapa de partidas y sesiones de partidas 
-	private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<WebSocketSession>();
-
-	@Override
-	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-		// que hago cuando se establece una coneccion al socket
-		// agregarlo a lista de sessions
-		sessions.add(session);
+	
+	// Map para trackear sesiones de jugadores (opcional, para futuras mejoras)
+	private final ConcurrentHashMap<String, String> jugadorSessions = new ConcurrentHashMap<>();
+	
+	/**
+	 * Endpoint principal que maneja todas las acciones del juego
+	 * Los clientes envían mensajes a /app/accion
+	 * Las respuestas se envían a /topic/game para que todos los suscritos las reciban
+	 */
+	@MessageMapping("/accion")
+	public void handleAction(@Payload Map<String, Object> data) {
+		try {
+			String nombre = (String) data.get("nombre");
+			
+			LOGGER.info("Acción recibida de: {}", nombre);
+			
+			// Si no hay partida, intentar crear jugadores
+			if (p == null) {
+				handleCrearJugador(nombre);
+			} else if (p.esMiTurno(nombre)) {
+				// Si es el turno del jugador, procesar la acción
+				String accion = (String) data.get("accion");
+				LOGGER.info("{} - {}", nombre, accion);
+				
+				if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
+					handleDesplegar(data);
+				} else {
+					switch (accion) {
+						case "MOVER":
+							handleMover(data);
+							break;
+						case "ATACAR":
+							handleAtacar(data);
+							break;
+						case "RECARGAR":
+							handleRecargar(data);
+							break;
+						default:
+							LOGGER.warn("Acción desconocida: {}", accion);
+							break;
+					}
+				}
+				
+				// Enviar estado actualizado a todos los clientes
+				String respuesta = mensajeRetorno();
+				messagingTemplate.convertAndSend("/topic/game", respuesta);
+				
+			} else {
+				LOGGER.info("No es tu turno: {}", nombre);
+			}
+			
+		} catch (Exception e) {
+			LOGGER.error("Error procesando acción: {}", e.getMessage(), e);
+		}
 	}
 	
-	@Override
-	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-		// que hago despues de que se cierra una coneccion
-		// remuevo la sesion pasada por parametro de sessions
-		sessions.remove(session);
-	}
-	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/* 
-	public void handleCrear(Map<String, Object> data) {
-		String nombre = (String) data.get("nombre");
-		if (jugador1 == null){	
+	/**
+	 * Maneja la creación de jugadores y partida
+	 */
+	private void handleCrearJugador(String nombre) {
+		if (jugador1 == null) {
 			jugador1 = new Jugador(nombre, 0, 0);
+			LOGGER.info("Jugador 1 creado: {}", jugador1.getNombre());
 		} else if (jugador2 == null) {
 			jugador2 = new Jugador(nombre, 0, 0);
-			p = new Partida(jugador1,jugador2);
-			System.out.println("Partida creada con jugadores: " + jugador1.getNombre() + " y " + jugador2.getNombre());
+			LOGGER.info("Jugador 2 creado: {}", jugador2.getNombre());
+			p = new Partida(jugador1, jugador2);
+			LOGGER.info("Partida creada con jugadores: {} y {}", jugador1.getNombre(), jugador2.getNombre());
+			
+			// Notificar a todos que la partida ha comenzado
+			String respuesta = mensajeRetorno();
+			messagingTemplate.convertAndSend("/topic/game", respuesta);
 		}
-	}*/
-	
+	}
+		
+	/**
+	 * Maneja el despliegue de drones en la fase inicial
+	 */
 	public void handleDesplegar(Map<String, Object> data) {
 		int x = (int) data.get("xi");
 		int y = (int) data.get("yi");
-		Posicion pos = new Posicion( x, y);
+		Posicion pos = new Posicion(x, y);
 
 		p.desplegarDron(pos);
 
-		System.out.println("Dron desplegado en: " + x + ", " + y);
-		System.out.println("turno: " + p.getTurno());
+		LOGGER.info("Dron desplegado en: {}, {}", x, y);
+		LOGGER.info("Turno: {}", p.getTurno());
 	}
 
+	/**
+	 * Maneja el movimiento de drones
+	 */
 	public void handleMover(Map<String, Object> data) {
 		int xi = (int) data.get("xi");
 		int yi = (int) data.get("yi");
-		Posicion posi = new Posicion( xi, yi);
+		Posicion posi = new Posicion(xi, yi);
 		int xf = (int) data.get("xf");
 		int yf = (int) data.get("yf");
-		Posicion posf = new Posicion( xf, yf);
+		Posicion posf = new Posicion(xf, yf);
 		
 		p.mover(posi, posf);
 		p.terminarTurno();
 
-		System.out.println("Dron se movio desde: " + xi + ", " + yi + " hasta: " + xf + ", " + yf);
-		System.out.println("turno: " + p.getTurno());
+		LOGGER.info("Dron se movió desde: {}, {} hasta: {}, {}", xi, yi, xf, yf);
+		LOGGER.info("Turno: {}", p.getTurno());
 	}
 
+	/**
+	 * Maneja los ataques entre drones
+	 */
 	public void handleAtacar(Map<String, Object> data) {
 		int xi = (int) data.get("xi");
 		int yi = (int) data.get("yi");
-		Posicion posi = new Posicion( xi, yi);
+		Posicion posi = new Posicion(xi, yi);
 		int xf = (int) data.get("xf");
 		int yf = (int) data.get("yf");
-		Posicion posf = new Posicion( xf, yf);
+		Posicion posf = new Posicion(xf, yf);
 		
 		p.atacar(posi, posf);
 		p.terminarTurno();
 
-		System.out.println("Dron ataco desde: " + xi + ", " + yi + " hasta: " + xf + ", " + yf);
-		System.out.println("turno: " + p.getTurno());
+		LOGGER.info("Dron atacó desde: {}, {} hasta: {}, {}", xi, yi, xf, yf);
+		LOGGER.info("Turno: {}", p.getTurno());
 	}
 
+	/**
+	 * Maneja la recarga de munición
+	 */
 	public void handleRecargar(Map<String, Object> data) {
 		int x = (int) data.get("xi");
 		int y = (int) data.get("yi");
-		Posicion pos = new Posicion( x, y);
+		Posicion pos = new Posicion(x, y);
 		
 		p.recargarMunicion(pos);
 
-		System.out.println("Dron recargo municion en: " + x + ", " + y);
-		System.out.println("turno: " + p.getTurno());
+		LOGGER.info("Dron recargó munición en: {}, {}", x, y);
+		LOGGER.info("Turno: {}", p.getTurno());
 	}
-	/*
-	public void handleTerminarTurno(Map<String, Object> data) {
-		
-	}*/
 
+	/**
+	 * Genera el mensaje de retorno con el estado actual del juego
+	 */
 	public String mensajeRetorno() {
 		String t = null;
-		try { // Convert the Java object to a JSON string
-    		//t = mapper.writeValueAsString(p.getTablero());
+		try {
 			t = mapper.writeValueAsString(p.getFasePartida());
-    		System.out.println("STRING JSON DE SERVIDOR A CLIENTE DEL MAPA:" + t);
+			LOGGER.debug("Estado del juego serializado: {}", t);
 		} catch (Exception e) {
-    		e.printStackTrace();
+			LOGGER.error("Error al serializar el estado del juego", e);
 		}
 		return t;
 	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	@Override
-	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-		// enviar a los receptores el mensaje que haya enviado un usuario
-		// al recibir un mensaje lo distribuye a todas las sesiones activas
-		
-		// mensaje mapeado para poder extraer componentes
-		String payload = message.getPayload();
-		Map<String, Object> data = mapper.readValue(payload, Map.class);
-
-		//
-		String nombre = (String) data.get("nombre");
-
-		if(p == null){
-			if (jugador1 == null){	
-				jugador1 = new Jugador(nombre, 0, 0);
-				System.out.println("Jugador 1 creado: " + jugador1.getNombre());
-			} else if (jugador2 == null) {
-				jugador2 = new Jugador(nombre, 0, 0);
-				System.out.println("Jugador 2 creado: " + jugador2.getNombre());
-				p = new Partida(jugador1,jugador2);
-				System.out.println("Partida creada con jugadores: " + jugador1.getNombre() + " y " + jugador2.getNombre());
-			}
-		} else if (p.esMiTurno(nombre)) {
-			// string accion determina la accion que el cliente quiere realizar}
-			String accion = (String) data.get("accion");
-			System.out.println(nombre + " - " + accion);////////////////////////
-			if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
-				handleDesplegar(data);
-			} else {
-				switch (accion) {
-				case "MOVER":
-					handleMover(data);
-					break;
-				case "ATACAR":
-					handleAtacar(data);
-					break;
-				case "RECARGAR":
-					handleRecargar(data);
-					break;
-				default:
-					//enviarError(session, "Acción desconocida: " + accion);
-					break;
-				}
-			
-			}
-			TextMessage respuesta = new TextMessage(mensajeRetorno());
-			
-			
-			for (WebSocketSession webSocketSession : sessions) {
-				try {
-					webSocketSession.sendMessage(respuesta);
-				} catch (IOException e) {
-					LOGGER.error(e.getMessage(),e);
-				}
-			}
-		} else {
-			System.out.println("No es tu turno: " + nombre);
-		}
-		
-		/* 
-		for (WebSocketSession webSocketSession : sessions) {
-				try {
-					webSocketSession.sendMessage(message);
-				} catch (IOException e) {
-					LOGGER.error(e.getMessage(),e);
-				}
-			}*/
-		//  mensajes
-		// tipo: nombres iniciales, despliegue una posicion por mensaje , nombre posiciones accion
-
-
-		
+	
+	/**
+	 * Método opcional para reiniciar la partida
+	 */
+	public void reiniciarPartida() {
+		this.p = null;
+		this.jugador1 = null;
+		this.jugador2 = null;
+		this.jugadorSessions.clear();
+		LOGGER.info("Partida reiniciada");
 	}
 
 }
