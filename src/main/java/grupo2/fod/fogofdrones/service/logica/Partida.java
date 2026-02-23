@@ -1,7 +1,9 @@
 package grupo2.fod.fogofdrones.service.logica;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -25,10 +27,10 @@ public class Partida implements Serializable {
         jugadorAereo = jugador2;
         dronesAereos = new LinkedList<Dron>();
         dronesNavales = new LinkedList<Dron>();
-        Posicion pos = new Posicion(0,35);
-        portaDronesNaval = new PortaDrones(0,3,2,Equipo.NAVAL,pos);
-        pos = new Posicion(63,0);
-        portaDronesAereo = new PortaDrones(0,6,2,Equipo.AEREO,pos);
+        Posicion pos = new Posicion(0,35);  // mitad a la derecha del portadrones naval
+        portaDronesNaval = new PortaDrones(0,3,5,Equipo.NAVAL,pos);
+        pos = new Posicion(63,0);           // mitad a la izquierda del portadrones aereo
+        portaDronesAereo = new PortaDrones(0,6,5,Equipo.AEREO,pos);
         fase = FasePartida.DESPLIEGUE;
         turno = Equipo.NAVAL;
         turnosMuerteSubita = 1; // 1 para que no asigne fase terminado durante partida
@@ -53,11 +55,16 @@ public class Partida implements Serializable {
             }
         }
         if(valido) {
-            Celda celdaOrigen = tablero.getCelda(posParam);
-            Dron dron = celdaOrigen.getDronEquipo(equipoParam);
-            if (dron != null) {
+            if(esZonaPortaDrones(posParam, turno)) {
                 valido = false;
-                System.out.println("Error: ya hay un dron de tu equipo en esa casilla");
+                System.out.println("Error: no puedes desplegar un dron sobre a tu propio porta drones");
+            } else {
+                Celda celdaOrigen = tablero.getCelda(posParam);
+                Dron dron = celdaOrigen.getDronEquipo(equipoParam);
+                if (dron != null) {
+                    valido = false;
+                    System.out.println("Error: ya hay un dron de tu equipo en esa casilla");
+                }
             }
         }
         return valido;
@@ -134,10 +141,15 @@ public class Partida implements Serializable {
                         puede = false;
                         System.out.println("Error: el lugar a donde quiere mover esta fuera de alcance");
                     } else {
-                        Celda celdaDestino = tablero.getCelda(destinoParam);    // verifica si en el destino hay un dron aliado
-                        if (celdaDestino.tieneDronEquipo(turno)) {
-                            puede = false;
-                            System.out.println("Error: en esa celda ya hay un dron aliado");
+                        if(esZonaPortaDrones(destinoParam, turno)) {
+                        puede = false;
+                        System.out.println("Error: no puedes moverte subre tu propio porta drones");
+                        } else {
+                            Celda celdaDestino = tablero.getCelda(destinoParam);    // verifica si en el destino hay un dron aliado
+                            if (celdaDestino.tieneDronEquipo(turno)) {
+                                puede = false;
+                                System.out.println("Error: en esa celda ya hay un dron aliado");
+                            }
                         }
                     }
                 } 
@@ -185,10 +197,15 @@ public class Partida implements Serializable {
                         puede = false;
                         System.out.println("Error: el lugar al que quiere disparar esta fuera de alcance");
                     } else {
-                        Celda celdaDestino = tablero.getCelda(destinoParam);
-                        if(celdaDestino.getDronEquipo(turno) != null && !origenParam.mismaPosicion(destinoParam)) {
+                        if(esZonaPortaDrones(destinoParam, turno)) {
                             puede = false;
-                            System.out.println("Error: no puedes disparar a una unidad aliada");
+                            System.out.println("Error: no puedes disparar a tu propio porta drones");
+                        } else {
+                            Celda celdaDestino = tablero.getCelda(destinoParam);
+                            if(celdaDestino.getDronEquipo(turno) != null && !origenParam.mismaPosicion(destinoParam)) {
+                                puede = false;
+                                System.out.println("Error: no puedes disparar a una unidad aliada");
+                            }
                         }
                     }
                 }
@@ -197,21 +214,22 @@ public class Partida implements Serializable {
         return puede;
     }
 
-    public boolean esZonaPortaDrones(Posicion posParam, Equipo enemigoParam) {
+    public boolean esZonaPortaDrones(Posicion posParam, Equipo equipoParam) {
         boolean es = false;
-        PortaDrones aux = getPortaDronesEquipo(enemigoParam.siguienteEquipo());
-        Posicion posPorta = aux.getPosicion();
         int x = posParam.getX();
         int y = posParam.getY();
         
-        if (turno == Equipo.NAVAL) {
-            if(x >= 62 && x <= 63 && y >= 0 && y <= 2)    // Portaaviones aéreo está en zona derecha específica, columnas 62-63, filas 0-2
+        if (equipoParam == Equipo.NAVAL) {
+            int xPorta = portaDronesNaval.getPosicion().getX();
+            int yPorta = portaDronesNaval.getPosicion().getY();
+            if(x >= xPorta && x <= xPorta+1 && y >= yPorta-2 && y <= yPorta)      // Portaaviones naval está en zona izquierda específica, columnas 0-1, filas 33-35
                 es = true;
         } else {
-            if(x >= 0 && x <= 1 && y >= 33 && y <= 35)      // Portaaviones naval está en zona izquierda específica, columnas 0-1, filas 33-35
+            int xPorta = portaDronesAereo.getPosicion().getX();
+            int yPorta = portaDronesAereo.getPosicion().getY();
+            if(x >= xPorta-1 && x <= xPorta && y >= yPorta && y <= yPorta+2)    // Portaaviones aéreo está en zona derecha específica, columnas 62-63, filas 0-2
                 es = true;
         }
-
         return es;
     }
 
@@ -432,6 +450,12 @@ public class Partida implements Serializable {
         for (Dron dron : dronesAereos) {
             tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.AEREO);
         }
+        
+        Posicion posPortaNaval = new Posicion(portaDronesNaval.getPosicion().getX()+1, portaDronesNaval.getPosicion().getY()-1);
+        Posicion posPortaAereo = new Posicion(portaDronesAereo.getPosicion().getX()-1, portaDronesAereo.getPosicion().getY()+1);
+        tablero.marcarVision(posPortaNaval, portaDronesAereo.getVision(), Equipo.NAVAL);
+        tablero.marcarVision(posPortaAereo, portaDronesAereo.getVision(), Equipo.AEREO);
+
     }
 
     public Mapa getTablero() {

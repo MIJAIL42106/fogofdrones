@@ -18,13 +18,16 @@ public class Jugador implements Serializable{
     private int victorias;
     @Column(name = "puntos")
     private int puntos;
+    @Column(name = "jugando")
+    private boolean jugando;
 
     public Jugador(){}
 
-    public Jugador(String nombreParam, int victoriasParam, int puntosParam) {
+    public Jugador(String nombreParam, int victoriasParam, int puntosParam, boolean jugandoParam) {
         nombre = nombreParam;
         victorias = victoriasParam;
         puntos = puntosParam;
+        jugando = jugandoParam;
     }
 
     public String getNombre() {
@@ -39,12 +42,20 @@ public class Jugador implements Serializable{
         return puntos;
     }
 
+    public boolean getJugando() {
+        return jugando;
+    }
+
     public void sumarVictoria() {
         victorias++;
     }
 
     public void sumarPuntos(int puntosParam) {
         puntos += puntosParam;
+    }
+
+    public void setJugando(boolean jugandoParam) {
+        jugando = jugandoParam;
     }
 
 }

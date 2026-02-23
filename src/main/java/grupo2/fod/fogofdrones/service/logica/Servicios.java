@@ -30,8 +30,8 @@ public class Servicios{
         if (partidas.containsKey(clave)) {        // ya existe una partidad con esos jugadores
             System.out.println("Error: ya existe una partida con esos jugadores");
         } else {
-            Jugador Naval = repo.findById(jugador1).orElse(new Jugador(jugador1, 0, 0));
-            Jugador Aereo = repo.findById(jugador2).orElse(new Jugador(jugador2, 0, 0));
+            Jugador Naval = repo.findById(jugador1).orElse(new Jugador(jugador1, 0, 0, true));
+            Jugador Aereo = repo.findById(jugador2).orElse(new Jugador(jugador2, 0, 0, true));
 
             repo.save(Naval);
             repo.save(Aereo);
@@ -88,20 +88,24 @@ public class Servicios{
         Partida partida = partidas.get(clave);
         Equipo ganador = partida.getEquipoGanador();
         switch (ganador) {
-            case NAVAL:
+            case NAVAL: {
+                repo.delete(partida.getJugadorNaval());
                 partida.getJugadorNaval().sumarVictoria();
                 partida.getJugadorNaval().sumarPuntos(10); // Ejemplo de puntos por victoria
-                repo.save(partida.getJugadorNaval());
-                break;
-            case AEREO:
+            } break;
+            case AEREO: {
+                repo.delete(partida.getJugadorAereo());
                 partida.getJugadorAereo().sumarVictoria();
                 partida.getJugadorAereo().sumarPuntos(10); // Ejemplo de puntos por victoria
-                repo.save(partida.getJugadorAereo());
-                break;
+            } break;
             default:
                 // Empate, no se suman victorias ni puntos
                 break;
         }
+        partida.getJugadorNaval().setJugando(false);
+        partida.getJugadorAereo().setJugando(false);
+        repo.save(partida.getJugadorNaval());
+        repo.save(partida.getJugadorAereo());
         eliminarPartida(nombre1, nombre2);
     }
 
@@ -122,6 +126,7 @@ public class Servicios{
             String jugadorN = partida.getJugadorNaval().getNombre();
             String clave = generarClave(jugadorN, jugadorA);
             partidas.put(clave, partida);
+            repoPartidas.delete(persistencia);
         } else {
             System.out.println("Error: no se encontró una partida con ese nombre");
         }  

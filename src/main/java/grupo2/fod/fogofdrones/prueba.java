@@ -8,8 +8,8 @@ import grupo2.fod.fogofdrones.service.logica.Posicion;
 
 public class prueba {
     public static void main(String[] args) {
-        Jugador j1 = new Jugador("Juan1",0,0);
-        Jugador j2 = new Jugador("Pepe2",0,0);
+        Jugador j1 = new Jugador("Juan1",0,0, true);
+        Jugador j2 = new Jugador("Pepe2",0,0, true);
         Partida p = new Partida(j1, j2 );
         
         Posicion pos = new Posicion(0, 0);
