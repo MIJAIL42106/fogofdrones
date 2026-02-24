@@ -1,5 +1,9 @@
 package grupo2.fod.fogofdrones.service.valueObject;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import grupo2.fod.fogofdrones.service.logica.Celda;
 import grupo2.fod.fogofdrones.service.logica.Equipo;
 import grupo2.fod.fogofdrones.service.logica.FasePartida;
@@ -11,6 +15,9 @@ public class VoMensaje {
     private Celda[] grilla;
     private String nombre;
     private Equipo equipo;
+    private Equipo turno;
+    private Equipo ganador;
+    private List<Map<String, Object>> eventos;
     private String error;
     
     public VoMensaje() {
@@ -19,6 +26,9 @@ public class VoMensaje {
         this.equipo = null;
         this.fasePartida = null;    
         this.grilla = null;
+        this.turno = null;
+        this.ganador = null;
+        this.eventos = new ArrayList<>();
         this.error = null;
     }
 
@@ -28,6 +38,9 @@ public class VoMensaje {
         this.equipo = equipo;
         this.fasePartida = null;    
         this.grilla = null;
+        this.turno = null;
+        this.ganador = null;
+        this.eventos = new ArrayList<>();
         this.error = null;
     }
     
@@ -37,6 +50,21 @@ public class VoMensaje {
         this.grilla = tablero.getGrillaLineal();
         this.nombre = null;
         this.equipo = null;
+        this.turno = null;
+        this.ganador = null;
+        this.eventos = new ArrayList<>();
+        this.error = null;
+    }
+
+    public VoMensaje(FasePartida fasePartida, Mapa tablero, Equipo turno, Equipo ganador, List<Map<String, Object>> eventos) {
+        this.tipoMensaje = 1;
+        this.fasePartida = fasePartida;
+        this.grilla = tablero.getGrillaLineal();
+        this.nombre = null;
+        this.equipo = null;
+        this.turno = turno;
+        this.ganador = ganador;
+        this.eventos = eventos != null ? eventos : new ArrayList<>();
         this.error = null;
     }
 
@@ -47,6 +75,9 @@ public class VoMensaje {
         this.fasePartida = null;
         this.grilla = null;
         this.equipo = null;
+        this.turno = null;
+        this.ganador = null;
+        this.eventos = new ArrayList<>();
     }
 
     public int getTipoMensaje() {
@@ -73,6 +104,18 @@ public class VoMensaje {
         return error;
     }
 
+    public Equipo getTurno() {
+        return turno;
+    }
+
+    public Equipo getGanador() {
+        return ganador;
+    }
+
+    public List<Map<String, Object>> getEventos() {
+        return eventos;
+    }
+
     public void setTipoMensaje(int tipoMensaje) {
         this.tipoMensaje = tipoMensaje;
     }
@@ -95,6 +138,18 @@ public class VoMensaje {
 
     public void setError(String error) {
         this.error = error;
+    }
+
+    public void setTurno(Equipo turno) {
+        this.turno = turno;
+    }
+
+    public void setGanador(Equipo ganador) {
+        this.ganador = ganador;
+    }
+
+    public void setEventos(List<Map<String, Object>> eventos) {
+        this.eventos = eventos;
     }
 
 }

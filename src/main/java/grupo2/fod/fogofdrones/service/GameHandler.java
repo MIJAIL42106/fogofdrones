@@ -2,6 +2,9 @@ package grupo2.fod.fogofdrones.service;
 
 // ver como adaptar a servicios usando varias partidas
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,7 @@ import grupo2.fod.fogofdrones.service.logica.FasePartida;
 import grupo2.fod.fogofdrones.service.logica.Partida;
 import grupo2.fod.fogofdrones.service.logica.Posicion;
 import grupo2.fod.fogofdrones.service.logica.Servicios;
+import grupo2.fod.fogofdrones.service.logica.Dron;
 import grupo2.fod.fogofdrones.service.valueObject.VoMensaje;
 
 // Controlador que administra las conexiones STOMP para el juego
@@ -65,6 +69,7 @@ public class GameHandler {
 	 */
 	@MessageMapping("/accion")
 	public void handleAction(@Payload Map<String, Object> data) {
+		List<Map<String, Object>> eventosVisuales = new ArrayList<>();
 		try {
 			//LOGGER.info("========== MENSAJE RECIBIDO ==========");
 			//LOGGER.info("Datos completos: {}", data);
@@ -75,6 +80,7 @@ public class GameHandler {
 			
 			// Obtener la partida asociada a este jugador
 			Partida p = servicios.getPartidaJugador(nombre);
+			PartidaSnapshot before = snapshot(p);
 			
 			if (p.esMiTurno(nombre)) {
 				// Si es el turno del jugador, procesar la acción
@@ -102,10 +108,12 @@ public class GameHandler {
 							break;
 					}
 				}
+
+				eventosVisuales = construirEventosVisuales(data, nombre, before, p);
 				
 				// Enviar estado actualizado a todos los clientes
 				//LOGGER.info("Enviando estado actualizado después de acción...");
-				String respuesta = mensajeRetorno(p);
+				String respuesta = mensajeRetorno(p, eventosVisuales);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
 				//LOGGER.info("Estado actualizado enviado a todos los clientes");
 				
@@ -113,6 +121,9 @@ public class GameHandler {
 				//LOGGER.info("No es tu turno: {}", nombre);
 				// Enviar mensaje de error al jugador
 				VoMensaje mensajeError = new VoMensaje(nombre, "No es tu turno");
+				List<Map<String, Object>> eventos = new ArrayList<>();
+				eventos.add(crearEvento("NO_ES_TU_TURNO", Map.of("jugador", nombre)));
+				mensajeError.setEventos(eventos);
 				String respuesta = mapper.writeValueAsString(mensajeError);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
 			}
@@ -247,11 +258,15 @@ public class GameHandler {
 	 * Genera el mensaje de retorno con el estado actual del juego
 	 */
 	public String mensajeRetorno(Partida p) {
+		return mensajeRetorno(p, List.of());
+	}
+
+	public String mensajeRetorno(Partida p, List<Map<String, Object>> eventosVisuales) {
 		String t = null;
 		try {
 			//LOGGER.info("Generando mensaje de retorno...");
 			// Crear VoMensaje con la fase y la grilla completa
-			VoMensaje mensaje = new VoMensaje(p.getFasePartida(), p.getTablero());
+			VoMensaje mensaje = new VoMensaje(p.getFasePartida(), p.getTablero(), p.getTurno(), p.getEquipoGanador(), eventosVisuales);
 			t = mapper.writeValueAsString(mensaje);
 			//LOGGER.info("Estado del juego serializado exitosamente - Tamaño: {} chars", t.length());
 			//LOGGER.debug("Contenido del mensaje (primeros 200 chars): {}", t.substring(0, Math.min(200, t.length())));
@@ -260,6 +275,144 @@ public class GameHandler {
 			e.printStackTrace();
 		}
 		return t;
+	}
+
+	private PartidaSnapshot snapshot(Partida p) {
+		return new PartidaSnapshot(
+			p.getFasePartida(),
+			p.getTurno(),
+			p.getDronesNavales().size(),
+			p.getDronesAereos().size(),
+			p.getPortaDronesNaval().getVida(),
+			p.getPortaDronesAereo().getVida(),
+			p.getSeMovio(),
+			p.getDisparo(),
+			totalMunicion(p.getDronesNavales()),
+			totalMunicion(p.getDronesAereos())
+		);
+	}
+
+	private int totalMunicion(List<Dron> drones) {
+		int total = 0;
+		for (Dron d : drones) {
+			total += d.getMunicion();
+		}
+		return total;
+	}
+
+	private List<Map<String, Object>> construirEventosVisuales(Map<String, Object> data, String jugador, PartidaSnapshot before, Partida p) {
+		List<Map<String, Object>> eventos = new ArrayList<>();
+		String accion = (String) data.get("accion");
+		PartidaSnapshot after = snapshot(p);
+
+		if (before.fase == FasePartida.DESPLIEGUE && after.fase == FasePartida.DESPLIEGUE && after.navales > before.navales) {
+			eventos.add(crearEvento("DESPLIEGUE_DRON", Map.of("equipo", "NAVAL", "x", intOr(data, "xi"), "y", intOr(data, "yi"), "jugador", p.getJugadorNaval().getNombre())));
+		}
+		if (before.fase == FasePartida.DESPLIEGUE && after.fase == FasePartida.DESPLIEGUE && after.aereos > before.aereos) {
+			eventos.add(crearEvento("DESPLIEGUE_DRON", Map.of("equipo", "AEREO", "x", intOr(data, "xi"), "y", intOr(data, "yi"), "jugador", p.getJugadorAereo().getNombre())));
+		}
+
+		if ("MOVER".equals(accion) && !before.seMovio && after.seMovio) {
+			eventos.add(crearEvento("MOVER_DRON", Map.of(
+				"equipo", before.turno.toString(),
+				"origenX", intOr(data, "xi"),
+				"origenY", intOr(data, "yi"),
+				"destinoX", intOr(data, "xf"),
+				"destinoY", intOr(data, "yf")
+			)));
+		}
+
+		if ("ATACAR".equals(accion) && !before.disparo && after.disparo) {
+			eventos.add(crearEvento("ATAQUE_DRON", Map.of(
+				"equipoAtacante", before.turno.toString(),
+				"origenX", intOr(data, "xi"),
+				"origenY", intOr(data, "yi"),
+				"destinoX", intOr(data, "xf"),
+				"destinoY", intOr(data, "yf")
+			)));
+
+			if (after.navales < before.navales || after.aereos < before.aereos) {
+				eventos.add(crearEvento("DESTRUCCION_DRON", Map.of("equipoDestruido", after.navales < before.navales ? "NAVAL" : "AEREO")));
+			} else if (after.portaVidaNaval < before.portaVidaNaval || after.portaVidaAereo < before.portaVidaAereo) {
+				eventos.add(crearEvento("IMPACTO_PORTADRONES", Map.of("equipoImpactado", after.portaVidaNaval < before.portaVidaNaval ? "NAVAL" : "AEREO")));
+			} else {
+				eventos.add(crearEvento("IMPACTO_SIN_BAJA", Map.of()));
+			}
+		}
+
+		if ("RECARGAR".equals(accion)) {
+			boolean recargoNaval = before.turno == Equipo.NAVAL && after.municionNaval > before.municionNaval;
+			boolean recargoAereo = before.turno == Equipo.AEREO && after.municionAereo > before.municionAereo;
+			if (recargoNaval || recargoAereo) {
+				eventos.add(crearEvento("RECARGA_DRON", Map.of("equipo", before.turno.toString(), "x", intOr(data, "xi"), "y", intOr(data, "yi"))));
+			}
+		}
+
+		if (before.turno != after.turno) {
+			eventos.add(crearEvento("CAMBIO_TURNO", Map.of("de", before.turno.toString(), "a", after.turno.toString())));
+		}
+
+		if (before.fase != after.fase) {
+			eventos.add(crearEvento("CAMBIO_FASE", Map.of("de", before.fase.toString(), "a", after.fase.toString())));
+		}
+
+		if (after.fase == FasePartida.TERMINADO) {
+			Equipo ganador = p.getEquipoGanador();
+			if (ganador != null && ganador != Equipo.NINGUNO) {
+				String jugadorGanador = ganador == Equipo.NAVAL ? p.getJugadorNaval().getNombre() : p.getJugadorAereo().getNombre();
+				eventos.add(crearEvento("VICTORIA", Map.of("equipo", ganador.toString(), "jugador", jugadorGanador)));
+				eventos.add(crearEvento("DERROTA", Map.of("equipo", ganador.siguienteEquipo().toString())));
+			} else {
+				eventos.add(crearEvento("EMPATE", Map.of()));
+			}
+		}
+
+		if (eventos.isEmpty() && accion != null) {
+			eventos.add(crearEvento("ACCION_INVALIDA_O_SIN_CAMBIO", Map.of("accion", accion, "jugador", jugador)));
+		}
+
+		return eventos;
+	}
+
+	private int intOr(Map<String, Object> data, String key) {
+		Object value = data.get(key);
+		if (value instanceof Number number) {
+			return number.intValue();
+		}
+		return -1;
+	}
+
+	private Map<String, Object> crearEvento(String tipo, Map<String, Object> payload) {
+		Map<String, Object> evento = new LinkedHashMap<>();
+		evento.put("tipo", tipo);
+		evento.put("payload", payload);
+		return evento;
+	}
+
+	private static class PartidaSnapshot {
+		private final FasePartida fase;
+		private final Equipo turno;
+		private final int navales;
+		private final int aereos;
+		private final int portaVidaNaval;
+		private final int portaVidaAereo;
+		private final boolean seMovio;
+		private final boolean disparo;
+		private final int municionNaval;
+		private final int municionAereo;
+
+		private PartidaSnapshot(FasePartida fase, Equipo turno, int navales, int aereos, int portaVidaNaval, int portaVidaAereo, boolean seMovio, boolean disparo, int municionNaval, int municionAereo) {
+			this.fase = fase;
+			this.turno = turno;
+			this.navales = navales;
+			this.aereos = aereos;
+			this.portaVidaNaval = portaVidaNaval;
+			this.portaVidaAereo = portaVidaAereo;
+			this.seMovio = seMovio;
+			this.disparo = disparo;
+			this.municionNaval = municionNaval;
+			this.municionAereo = municionAereo;
+		}
 	}
 	
 

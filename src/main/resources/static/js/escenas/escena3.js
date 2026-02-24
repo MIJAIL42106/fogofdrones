@@ -143,6 +143,7 @@ class escena3 extends Phaser.Scene {
                                 }
                             } break;
                             case 1: {
+                                this.procesarEventosVisuales(msg.eventos);
                                 if (gameState.fase !== msg.fasePartida.toString()) {
                                     if (msg.fasePartida.toString() === "JUGANDO") {
                                         this.botonPasar(this.pasarBtn);
@@ -352,6 +353,18 @@ class escena3 extends Phaser.Scene {
 
     enviarMensage(data) {
         this.wsClient.send("/app/accion", data);
+    }
+
+    procesarEventosVisuales(eventos) {
+        if (!Array.isArray(eventos) || eventos.length === 0) {
+            return;
+        }
+
+        window.dispatchEvent(new CustomEvent('fog:visual-events', { detail: eventos }));
+
+        eventos.forEach((evento) => {
+            window.dispatchEvent(new CustomEvent('fog:visual-event', { detail: evento }));
+        });
     }
 
     apagar() {
