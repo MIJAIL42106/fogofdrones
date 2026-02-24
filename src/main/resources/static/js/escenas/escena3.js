@@ -74,15 +74,7 @@ class escena3 extends Phaser.Scene {
     init(data){
         mensaje.nombre = data.nombre;
         gameState.equipo = data.equipo;
-    }
-
-    getSocketCandidates() {
-        const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
-        const bases = [customBase, window.location.origin, 'http://26.169.248.78:8080']
-            .filter(Boolean)
-            .map(base => base.replace(/\/$/, ''));
-
-        return [...new Set(bases)].map(base => base + '/game');
+        this.wsClient = createFogWebSocketClient();
     }
                                                 // carga de assets
     preload() {                                 // fondo, escenario, tile, dronN, dronA, portaN, portaA, explosiones // ver cohete despues
@@ -131,86 +123,75 @@ class escena3 extends Phaser.Scene {
 
     // establece conexion STOMP con SockJS
     conectarSTOMP() {
-        if (this.connectingStomp || (this.stompClient && this.stompClient.connected)) {
+        if (this.connectingStomp || (this.wsClient && this.wsClient.isConnected())) {
             return;
         }
-
-        const socketCandidates = this.getSocketCandidates();
         this.connectingStomp = true;
 
-        const intentarConexion = (index) => {
-            if (index >= socketCandidates.length) {
-                this.connectingStomp = false;
-                return;
-            }
-
-            const socket = new SockJS(socketCandidates[index]); 
-            const stompClient = Stomp.over(socket);
-            stompClient.debug = null;
-
-            stompClient.connect({}, () => {
-                this.stompClient = stompClient;
+        this.wsClient.connect({
+            onConnected: () => {
                 this.connectingStomp = false;
 
-                this.stompClient.subscribe('/topic/game', (message) => {
-                    var msg = JSON.parse(message.body);
+                if (!this.gameSubscription) {
+                    this.gameSubscription = this.wsClient.subscribe('/topic/game', (message) => {
+                        var msg = JSON.parse(message.body);
 
-                switch (msg.tipoMensaje) {
-                    case 0: {
-                        if (mensaje.nombre === msg.nombre) {
-                            gameState.equipo = msg.equipo.toString();
-                        }
-                    } break;
-                    case 1: {
-                        if (gameState.fase !== msg.fasePartida.toString()) {
-                            if (msg.fasePartida.toString() === "JUGANDO") {
-                                this.botonPasar(this.pasarBtn);
-                            } 
-                            gameState.fase = msg.fasePartida.toString();
-                        }
-                        this.forma.clear(); 
-                        this.forma.fillStyle(0xff0000, 0);
-                        this.eliminarDrones();
-                        var i = 0;
-                        msg.grilla.forEach((cel) => {
-                            let celda = this.tablero.getAt(i);
-                            if (!cel.visionNaval && gameState.equipo === "NAVAL") {
-                                celda.setFillStyle(gameState.niebla);
-                            } else if (!cel.visionAereo && gameState.equipo === "AEREO") {
-                                celda.setFillStyle(gameState.niebla);
-                            } else if (cel.aereo !== null) {
-                                if (gameState.equipo === "AEREO" || cel.visionNaval) {
-                                    this.dibujarDronAereo(celda.x, celda.y);
+                        switch (msg.tipoMensaje) {
+                            case 0: {
+                                if (mensaje.nombre === msg.nombre) {
+                                    gameState.equipo = msg.equipo.toString();
                                 }
-                            } else if (cel.naval !== null) {
-                                if (gameState.equipo === "NAVAL" || cel.visionAereo) {
-                                    this.dibujarDronNaval(celda.x, celda.y);
+                            } break;
+                            case 1: {
+                                if (gameState.fase !== msg.fasePartida.toString()) {
+                                    if (msg.fasePartida.toString() === "JUGANDO") {
+                                        this.botonPasar(this.pasarBtn);
+                                    } 
+                                    gameState.fase = msg.fasePartida.toString();
                                 }
-                            } else {
-                                celda.setFillStyle(0xffffff);
+                                this.forma.clear(); 
+                                this.forma.fillStyle(0xff0000, 0);
+                                this.eliminarDrones();
+                                var i = 0;
+                                msg.grilla.forEach((cel) => {
+                                    let celda = this.tablero.getAt(i);
+                                    if (!cel.visionNaval && gameState.equipo === "NAVAL") {
+                                        celda.setFillStyle(gameState.niebla);
+                                    } else if (!cel.visionAereo && gameState.equipo === "AEREO") {
+                                        celda.setFillStyle(gameState.niebla);
+                                    } else if (cel.aereo !== null) {
+                                        if (gameState.equipo === "AEREO" || cel.visionNaval) {
+                                            this.dibujarDronAereo(celda.x, celda.y);
+                                        }
+                                    } else if (cel.naval !== null) {
+                                        if (gameState.equipo === "NAVAL" || cel.visionAereo) {
+                                            this.dibujarDronNaval(celda.x, celda.y);
+                                        }
+                                    } else {
+                                        celda.setFillStyle(0xffffff);
 
-                                if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
-                                        this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
-                                }                           
-                            }
-                            i++;
-                        });
-                    } break;
-                    case 2: {
-                        if (mensaje.nombre === msg.nombre) { // alerta error
-                            alert(msg.error);
+                                        if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
+                                                this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
+                                        }                           
+                                    }
+                                    i++;
+                                });
+                            } break;
+                            case 2: {
+                                if (mensaje.nombre === msg.nombre) { // alerta error
+                                    alert(msg.error);
+                                }
+                            } break;
                         }
-                    } break;
+                    });
                 }
-                });
-                
-                this.enviarMensage(JSON.stringify(mensaje));
-            }, () => {
-                intentarConexion(index + 1);
-            });
-        };
 
-        intentarConexion(0);
+                this.enviarMensage(JSON.stringify(mensaje));
+            },
+            onError: () => {
+                this.connectingStomp = false;
+            }
+        });
     }
 
     crearAnimaciones(){
@@ -370,14 +351,12 @@ class escena3 extends Phaser.Scene {
     }
 
     enviarMensage(data) {
-        if (this.stompClient && this.stompClient.connected) {
-            this.stompClient.send("/app/accion", {}, data);
-        }
+        this.wsClient.send("/app/accion", data);
     }
 
     apagar() {
-        if (this.stompClient && this.stompClient.connected) {
-            this.stompClient.disconnect();
+        if (this.wsClient) {
+            this.wsClient.disconnect();
         }
     }
     

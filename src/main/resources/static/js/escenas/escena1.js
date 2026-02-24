@@ -23,6 +23,7 @@ class escena1 extends Phaser.Scene {
         this.pendingLoginPayload = null;
         this.awaitingLoginResponse = false;
         this.startedPartida = false;
+        this.wsClient = createFogWebSocketClient();
 
         this.crearNombreInput();
         this.conectarSTOMP();
@@ -46,7 +47,7 @@ class escena1 extends Phaser.Scene {
 
             this.awaitingLoginResponse = true;
             const payload = JSON.stringify(mensajeLogin);
-            if (this.stompClient && this.stompClient.connected) {
+            if (this.wsClient && this.wsClient.isConnected()) {
                 this.enviarMensage(payload);
             } else {
                 this.pendingLoginPayload = payload;
@@ -54,15 +55,6 @@ class escena1 extends Phaser.Scene {
             }
 
         });
-    }
-
-    getSocketCandidates() {
-        const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
-        const bases = [customBase, window.location.origin, 'http://26.169.248.78:8080']
-            .filter(Boolean)
-            .map(base => base.replace(/\/$/, ''));
-
-        return [...new Set(bases)].map(base => base + '/game');
     }
 
     normalizarNombre(value) {
@@ -92,68 +84,55 @@ class escena1 extends Phaser.Scene {
 
     // establece conexion STOMP con SockJS
     conectarSTOMP() {
-        if (this.connectingStomp || (this.stompClient && this.stompClient.connected)) {
+        if (this.connectingStomp || (this.wsClient && this.wsClient.isConnected())) {
             return;
         }
-
-        const socketCandidates = this.getSocketCandidates();
         this.connectingStomp = true;
 
-        const intentarConexion = (index) => {
-            if (index >= socketCandidates.length) {
-                this.connectingStomp = false;
-                return;
-            }
-
-            const socket = new SockJS(socketCandidates[index]);
-            const stompClient = Stomp.over(socket);
-            stompClient.debug = null;
-
-            stompClient.connect({}, () => {
-                this.stompClient = stompClient;
+        this.wsClient.connect({
+            onConnected: () => {
                 this.connectingStomp = false;
 
-                this.stompClient.subscribe('/topic/login', (message) => {
-                    let msg;
-                    try {
-                        msg = JSON.parse(message.body);
-                    } catch (error) {
-                        return;
-                    }
+                if (!this.loginSubscription) {
+                    this.loginSubscription = this.wsClient.subscribe('/topic/login', (message) => {
+                        let msg;
+                        try {
+                            msg = JSON.parse(message.body);
+                        } catch (error) {
+                            return;
+                        }
 
-                    const nombreLocal = this.normalizarNombre(mensajeLogin.nombre);
-                    const nombreRemoto = this.normalizarNombre(msg.nombre);
-                    const mismoJugador = nombreLocal.length > 0 && nombreLocal === nombreRemoto;
+                        const nombreLocal = this.normalizarNombre(mensajeLogin.nombre);
+                        const nombreRemoto = this.normalizarNombre(msg.nombre);
+                        const mismoJugador = nombreLocal.length > 0 && nombreLocal === nombreRemoto;
 
-                    if (msg && msg.tipoMensaje === 2 && mismoJugador) {
-                        this.awaitingLoginResponse = false;
-                        alert(msg.error || 'No se pudo iniciar sesión');
-                        return;
-                    }
+                        if (msg && msg.tipoMensaje === 2 && mismoJugador) {
+                            this.awaitingLoginResponse = false;
+                            alert(msg.error || 'No se pudo iniciar sesión');
+                            return;
+                        }
 
-                    const esperandoYConEquipo = this.awaitingLoginResponse && msg && msg.equipo != null;
+                        const esperandoYConEquipo = this.awaitingLoginResponse && msg && msg.equipo != null;
 
-                    if (mismoJugador || esperandoYConEquipo) {
-                        this.iniciarPartida(mensajeLogin.nombre, msg.equipo);
-                    }
-                });
+                        if (mismoJugador || esperandoYConEquipo) {
+                            this.iniciarPartida(mensajeLogin.nombre, msg.equipo);
+                        }
+                    });
+                }
 
                 if (this.pendingLoginPayload) {
                     this.enviarMensage(this.pendingLoginPayload);
                     this.pendingLoginPayload = null;
                 }
-            }, () => {
-                intentarConexion(index + 1);
-            });
-        };
-
-        intentarConexion(0);
+            },
+            onError: () => {
+                this.connectingStomp = false;
+            }
+        });
     }
 
     enviarMensage(data) {
-        if (this.stompClient && this.stompClient.connected) {
-            this.stompClient.send("/app/login", {}, data);
-        }
+        this.wsClient.send("/app/login", data);
     }
 
     // inputs HTML
@@ -183,8 +162,8 @@ class escena1 extends Phaser.Scene {
         this.domElements = [this.nombreInput];
     }
     shutdown() {
-        if (this.stompClient && this.stompClient.connected) {
-            this.stompClient.disconnect();
+        if (this.wsClient) {
+            this.wsClient.disconnect();
         }
         if (this.domElements) {
             this.domElements.forEach(element => {
