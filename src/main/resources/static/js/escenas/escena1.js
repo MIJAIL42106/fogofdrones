@@ -15,11 +15,13 @@ class escena1 extends Phaser.Scene {
         super({key: "menu"});  // nombre
     }
     preload() {
+        this.load.image("FondoMenu",".//assets/fondos/fondo_lobby.png");
     }  
 
     create() { 
         const { width, height } = this.cameras.main;
-        this.cameras.main.setBackgroundColor('#1a1a2e');
+        //this.cameras.main.setBackgroundColor('#1a1a2e');
+        this.fondo = this.add.image(width / 2, height / 2, "FondoMenu");
         this.pendingLoginPayload = null;
         this.awaitingLoginResponse = false;
         this.startedPartida = false;

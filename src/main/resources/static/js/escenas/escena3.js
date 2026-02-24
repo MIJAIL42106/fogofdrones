@@ -171,6 +171,7 @@ class escena3 extends Phaser.Scene {
                     case 1: {
                         if (gameState.fase !== msg.fasePartida.toString()) {
                             if (msg.fasePartida.toString() === "JUGANDO") {
+                                this.zonaDesp.destroy();
                                 this.botonPasar(this.pasarBtn);
                             } 
                             gameState.fase = msg.fasePartida.toString();
@@ -179,6 +180,23 @@ class escena3 extends Phaser.Scene {
                         this.forma.fillStyle(0xff0000, 0);
                         this.eliminarDrones();
                         var i = 0;
+                        msg.grilla.forEach((cel) => {
+                            let celda = this.tablero.getAt(i);
+                            if ( (gameState.equipo === "NAVAL" && cel.visionNaval) || (gameState.equipo === "AEREO" && cel.visionAereo)) {
+                                celda.setFillStyle(0xffffff);
+                                if (cel.naval)
+                                    this.dibujarDronNaval(celda.x, celda.y);
+                                if (cel.aereo)
+                                    this.dibujarDronAereo(celda.x, celda.y);
+                                if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
+                                        this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
+                                }  
+                            } else {
+                                celda.setFillStyle(gameState.niebla);
+                            }
+                            i++;
+                        });
+                        /*
                         msg.grilla.forEach((cel) => {
                             let celda = this.tablero.getAt(i);
                             if (!cel.visionNaval && gameState.equipo === "NAVAL") {
@@ -202,6 +220,7 @@ class escena3 extends Phaser.Scene {
                             }
                             i++;
                         });
+                        */
                     } break;
                     case 2: {
                         if (mensaje.nombre === msg.nombre) { // alerta error
@@ -234,6 +253,8 @@ class escena3 extends Phaser.Scene {
             frameRate: 10,
             repeat: -1,
         });
+
+        //animaciones pantalla secundaria
     }
     // podria no pasarse el boton
     botonPasar(boton) {
@@ -262,19 +283,22 @@ class escena3 extends Phaser.Scene {
     }
 
     crearFondo() {
+        // 960 y 540 podrian obtenerse de camara main
         var fondo = this.add.image(960,540,"Fondo").setDepth(1);   // creacion de fondo en posicion    // podria calcularse centro despues
         fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
         var escenario = this.add.image(38, 48,"Escenario").setOrigin(0, 0).setDepth(0);
         escenario.setScale(1);
-        var zonaDesp;
-        const anchoZona = 15 * gameState.tamCelda; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando
+        // this.pantallaImpactos = this.add.sprite(xAbs , yAbs ,"").setScale(1.5).setDepth(2);
+        
+        this.zonaDesp;
+        const anchoZona = 15 * gameState.tamCelda-11; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando
         const altoZona = (gameState.alto-1) * gameState.tamCelda;   // -1 
         if (gameState.equipo === "NAVAL") {
-            zonaDesp = this.add.rectangle(gameState.tableroX-11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
+            this.zonaDesp = this.add.rectangle(gameState.tableroX-11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
         } else {
-            zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
+            this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
         }
-        zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.6).setDepth(1); 
+        this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.6).setDepth(1); 
         
         const tamBtn = 333 ;
         const sep = 35 ;
@@ -362,7 +386,7 @@ class escena3 extends Phaser.Scene {
     dibujarDronNaval (x, y) {
         var xAbs = x + gameState.tableroX;
         var yAbs = y + gameState.tableroY;
-        let dron = this.add.sprite(xAbs , yAbs ,"DronN").setScale(1.5).setDepth(2);
+        let dron = this.add.sprite(xAbs - 1, yAbs ,"DronN").setScale(1.5).setDepth(2);
         dron.angle = -90;
         dron.play('idleN');
         gameState.drones.push(dron);
@@ -371,7 +395,7 @@ class escena3 extends Phaser.Scene {
     dibujarDronAereo (x, y) {
         var xAbs = x + gameState.tableroX;
         var yAbs = y + gameState.tableroY;
-        let dron = this.add.sprite(xAbs, yAbs ,"DronA").setScale(1.5).setDepth(2);
+        let dron = this.add.sprite(xAbs + 1, yAbs ,"DronA").setScale(1.5).setDepth(2);
         dron.angle = 90;
         dron.play('idleA');
         gameState.drones.push(dron);

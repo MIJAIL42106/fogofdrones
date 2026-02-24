@@ -6,7 +6,7 @@ var config = {
         width:1920, // ancho de pantalla
         height:1080,// alto de pantalla
     },
-    backgroundColor: "#ff0000",
+    backgroundColor: "#000000",
     /*
     physics : {
         default:"arcade", // tipo de fisica que va a utilizar 
