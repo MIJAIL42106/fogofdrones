@@ -3,13 +3,13 @@ gameState = {
     colorRojo: 0xffaaaa,                        //
     colorSelec: 0x7cff89,                        //
     niebla: 0x334455,
-    bordes: 0x9398c36e,
+    bordes: 0xffffff,
     ancho: 64,                                  // cantidad de celdas horizontales
     alto: 36,                                    // cantidad de celdas verticales
     tableroX: 50, 
     tableroY: 60,
     miTurno: false,                   // no se usa
-    celdas: 0,
+    clicks: 0,
     fase: "",
     equipo: "",
     drones: [],
@@ -34,28 +34,41 @@ class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
         gameState.escala = 22.36;                       // escala de posiciones
                                                 // añade rectangulo en posicion correspondiente a indices
-        this.tile = grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(1, gameState.bordes);
-        this.tile.setAlpha(0.6);                // ajuste de opacidad para celdas de grilla
+        this.tile = grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes);
+        this.tile.setAlpha(0.3);                // ajuste de opacidad para celdas de grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
         this.tile.on('pointerdown', () => {     // asigna interaccion al clikear
             if (gameState.fase === "DESPLIEGUE") {
-                grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
+                grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0.0, gameState.bordes);
                 mensaje.xi = x;
                 mensaje.yi = y;
+                //mensaje.xf = x;
+                //mensaje.yf = y;
                 this.tile.setStrokeStyle(3, gameState.colorSelec);    // hacer funcion borrar tinte seleccion para borrar al apretar boton
             } else {
-                if (gameState.celdas % 2 === 0){
-                    grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                    gameState.celdas ++;
+                if (gameState.clicks === 0){
+                    gameState.clicks ++;
+                    grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0.0, gameState.bordes);
                     mensaje.xi = x;
                     mensaje.yi = y;
-                    this.tile.setStrokeStyle(3, gameState.colorSelec);
-                } else if (gameState.celdas % 2 === 1) {
-                    grid.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
                     mensaje.xf = x;
                     mensaje.yf = y;
-                    gameState.celdas = 0;
+                    this.tile.setStrokeStyle(3, gameState.colorSelec);
+                } else if ( gameState.clicks === 1 ) {
+                    gameState.clicks ++;
+                    grid.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0.0, gameState.bordes);
+                    mensaje.xf = x;
+                    mensaje.yf = y;
+                    this.tile.setStrokeStyle(3, gameState.colorSelec);
+                } else {
+                    gameState.clicks ++;
+                    grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0.0, gameState.bordes);
+                    mensaje.xi = mensaje.xf;
+                    mensaje.yi = mensaje.yf;
+                    grid.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(3, gameState.bordes);
+                    mensaje.xf = x;
+                    mensaje.yf = y;
                     this.tile.setStrokeStyle(3, gameState.colorSelec);
                 }
             }
@@ -76,9 +89,9 @@ class escena3 extends Phaser.Scene {
         gameState.equipo = data.equipo;
     }
 
-    getSocketCandidates() {
-        const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
-        const bases = [customBase, window.location.origin, 'http://26.169.248.78:8080']
+    getSocketCandidates() { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
+        const bases = [/*customBase, window.location.origin,*/ 'http://26.169.248.78:8080']
             .filter(Boolean)
             .map(base => base.replace(/\/$/, ''));
 
@@ -274,9 +287,9 @@ class escena3 extends Phaser.Scene {
 
         //boton pasar turno con skin alternativa para desplegar al inicio
         botonDesplegar.on('pointerdown', () => {     // asigna interaccion al clikear
-            this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-            this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-            gameState.celdas = 0;
+            this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+            this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+            gameState.clicks = 0;
             mensaje.accion = "PASAR";               
             this.enviarMensage(JSON.stringify(mensaje)); 
         });
@@ -298,7 +311,7 @@ class escena3 extends Phaser.Scene {
         } else {
             this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
         }
-        this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.4).setDepth(1); 
+        this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.2).setDepth(1); 
         
         const tamBtn = 333 ;
         const sep = 35 ;
@@ -321,9 +334,9 @@ class escena3 extends Phaser.Scene {
         });
         moverBtn.on('pointerdown', () => {     // asigna interaccion al clikear
             if(gameState.fase !== "DESPLIEGUE") {
-                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                gameState.celdas = 0;
+                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                gameState.clicks = 0;
                 mensaje.accion = "MOVER";               
                 this.enviarMensage(JSON.stringify(mensaje));  
             }
@@ -339,9 +352,9 @@ class escena3 extends Phaser.Scene {
         });
         atacarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
             if(gameState.fase !== "DESPLIEGUE") {
-                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                gameState.celdas = 0;
+                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                gameState.clicks = 0;
                 mensaje.accion = "ATACAR";               
                 this.enviarMensage(JSON.stringify(mensaje)); 
             }
@@ -357,9 +370,9 @@ class escena3 extends Phaser.Scene {
         });
         recargarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
             if(gameState.fase !== "DESPLIEGUE") {
-                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-                gameState.celdas = 0;
+                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                gameState.clicks = 0;
                 mensaje.accion = "RECARGAR";               
                 this.enviarMensage(JSON.stringify(mensaje)); 
             }
@@ -376,9 +389,9 @@ class escena3 extends Phaser.Scene {
 
         //boton pasar turno con skin alternativa para desplegar al inicio
         this.pasarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
-            this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-            this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
-            gameState.celdas = 0;
+            this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+            //this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
+            gameState.clicks = 0;
             this.enviarMensage(JSON.stringify(mensaje));              
         });
     }

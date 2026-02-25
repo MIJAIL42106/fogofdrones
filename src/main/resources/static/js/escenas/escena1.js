@@ -29,7 +29,7 @@ class escena1 extends Phaser.Scene {
         this.crearNombreInput();
         this.conectarSTOMP();
     
-        const backButton = this.add.text(width / 2, height - 50, 'Jugar', {
+        const jugarBtn = this.add.text(width / 2, height - 50, 'Jugar', {
             fontSize: '40px',
             color: '#ffffff',
             backgroundColor: '#4bae5f',
@@ -38,7 +38,7 @@ class escena1 extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
 
         
-        backButton.on('pointerdown', () => {
+        jugarBtn.on('pointerdown', () => {
             mensajeLogin.nombre = this.nombreInput.value.trim();
 
             if (!mensajeLogin.nombre) {
@@ -59,8 +59,8 @@ class escena1 extends Phaser.Scene {
     }
 
     getSocketCandidates() {
-        const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
-        const bases = [customBase, window.location.origin, 'http://26.169.248.78:8080']
+        //const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
+        const bases = [/*customBase, window.location.origin,*/ 'http://26.169.248.78:8080']
             .filter(Boolean)
             .map(base => base.replace(/\/$/, ''));
 
