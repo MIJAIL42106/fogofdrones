@@ -111,10 +111,7 @@ class escena3 extends Phaser.Scene {
         this.load.image("PortaA",".//assets/sprites/PortaRojo-64x64x1.png");
         this.load.spritesheet("DronN",".//assets/sprites/DronVerde-64x64x2.png",{frameWidth: 64, frameHeight: 64});
         this.load.spritesheet("DronA",".//assets/sprites/DronRojo-64x64x2.png",{frameWidth: 64, frameHeight: 64});
-        this.load.spritesheet("ImpactoDronN",".//assets/sprites/ExpDronN-399x399x4x3.png",{frameWidth: 399, frameHeight: 399});
-        this.load.spritesheet("ImpactoDronA",".//assets/sprites/ExpDronA-399x399x4x3.png",{frameWidth: 399, frameHeight: 399});
-        this.load.spritesheet("ImpactoPortaN",".//assets/sprites/ExpPortaN-399x399x4x3.png",{frameWidth: 399, frameHeight: 399});
-        this.load.spritesheet("ImpactoPortaA",".//assets/sprites/ExpPortaA-399x399x4x3.png",{frameWidth: 399, frameHeight: 399});
+
     }
 
     create() {
@@ -175,72 +172,8 @@ class escena3 extends Phaser.Scene {
                 this.stompClient.subscribe('/topic/game', (message) => {
                     var msg = JSON.parse(message.body);
 
-                switch (msg.tipoMensaje) {
-                    case 0: {
-                        if (mensaje.nombre === msg.nombre) {
-                            gameState.equipo = msg.equipo.toString();
-                        }
-                    } break;
-                    case 1: {
-                        if (gameState.fase !== msg.fasePartida.toString()) {
-                            if (msg.fasePartida.toString() === "JUGANDO") {
-                                this.zonaDesp.destroy();
-                                this.botonPasar(this.pasarBtn);
-                            } 
-                            gameState.fase = msg.fasePartida.toString();
-                        }
-                        this.forma.clear(); 
-                        this.forma.fillStyle(0xff0000, 0);
-                        this.eliminarDrones();
-                        var i = 0;
-                        msg.grilla.forEach((cel) => {
-                            let celda = this.tablero.getAt(i);
-                            if ( (gameState.equipo === "NAVAL" && cel.visionNaval) || (gameState.equipo === "AEREO" && cel.visionAereo)) {
-                                celda.setFillStyle(0xffffff);
-                                if (cel.naval)
-                                    this.dibujarDronNaval(celda.x, celda.y);
-                                if (cel.aereo)
-                                    this.dibujarDronAereo(celda.x, celda.y);
-                                if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
-                                        this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
-                                }  
-                            } else {
-                                celda.setFillStyle(gameState.niebla);
-                            }
-                            i++;
-                        });
-                        /*
-                        msg.grilla.forEach((cel) => {
-                            let celda = this.tablero.getAt(i);
-                            if (!cel.visionNaval && gameState.equipo === "NAVAL") {
-                                celda.setFillStyle(gameState.niebla);
-                            } else if (!cel.visionAereo && gameState.equipo === "AEREO") {
-                                celda.setFillStyle(gameState.niebla);
-                            } else if (cel.aereo !== null) {
-                                if (gameState.equipo === "AEREO" || cel.visionNaval) {
-                                    this.dibujarDronAereo(celda.x, celda.y);
-                                }
-                            } else if (cel.naval !== null) {
-                                if (gameState.equipo === "NAVAL" || cel.visionAereo) {
-                                    this.dibujarDronNaval(celda.x, celda.y);
-                                }
-                            } else {
-                                celda.setFillStyle(0xffffff);
+                    this.procesarMensaje(msg);
 
-                                if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
-                                        this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
-                                }                           
-                            }
-                            i++;
-                        });
-                        */
-                    } break;
-                    case 2: {
-                        if (mensaje.nombre === msg.nombre) { // alerta error
-                            alert(msg.error);
-                        }
-                    } break;
-                }
                 });
                 
                 this.enviarMensage(JSON.stringify(mensaje));
@@ -250,6 +183,51 @@ class escena3 extends Phaser.Scene {
         };
 
         intentarConexion(0);
+    }
+
+    procesarMensaje(msg) {
+        switch (msg.tipoMensaje) {
+            case 0: {
+                if (mensaje.nombre === msg.nombre) {
+                    gameState.equipo = msg.equipo.toString();
+                }
+            } break;
+            case 1: {
+                if (gameState.fase !== msg.fasePartida.toString()) {
+                    if (msg.fasePartida.toString() === "JUGANDO") {
+                        this.zonaDesp.destroy();
+                        this.botonPasar(this.pasarBtn);
+                    } 
+                    gameState.fase = msg.fasePartida.toString();
+                }
+                this.forma.clear(); 
+                this.forma.fillStyle(0xff0000, 0);
+                this.eliminarDrones();
+                var i = 0;
+                msg.grilla.forEach((cel) => {
+                    let celda = this.tablero.getAt(i);
+                    if ( (gameState.equipo === "NAVAL" && cel.visionNaval) || (gameState.equipo === "AEREO" && cel.visionAereo)) {
+                        celda.setFillStyle(0xffffff);
+                        if (cel.naval)
+                            this.dibujarDronNaval(celda.x, celda.y);
+                        if (cel.aereo)
+                            this.dibujarDronAereo(celda.x, celda.y);
+                        if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
+                                this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
+                        }  
+                    } else {
+                        celda.setFillStyle(gameState.niebla);
+                    }
+                    i++;
+                });
+
+            } break;
+            case 2: {
+                if (mensaje.nombre === msg.nombre) { // alerta error
+                    alert(msg.error);
+                }
+            } break;
+        }
     }
 
     crearAnimaciones(){
@@ -378,13 +356,13 @@ class escena3 extends Phaser.Scene {
             }
         });
 
-        this.pasarBtn.on('pointerover', function() {     // asigna interaccion al clikear
-            pasarBtn.setTint(gameState.colorSelec);
-            pasarBtn.setScale(1.1);               
+        this.pasarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+            this.pasarBtn.setTint(gameState.colorSelec);
+            this.pasarBtn.setScale(1.1);               
         });
-        this.pasarBtn.on('pointerout', function() {     // asigna interaccion al clikear
-            pasarBtn.clearTint();
-            pasarBtn.setScale(1);               
+        this.pasarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+            this.pasarBtn.clearTint();
+            this.pasarBtn.setScale(1);               
         });
 
         //boton pasar turno con skin alternativa para desplegar al inicio
