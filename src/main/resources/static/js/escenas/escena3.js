@@ -88,15 +88,7 @@ class escena3 extends Phaser.Scene {
         mensaje.nombre = data.nombre;
         gameState.equipo = data.equipo;
     }
-
-    getSocketCandidates() { /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //const customBase = window.FOG_BACKEND_URL || localStorage.getItem('fogBackendUrl');
-        const bases = [/*customBase, window.location.origin,*/ 'http://26.169.248.78:8080']
-            .filter(Boolean)
-            .map(base => base.replace(/\/$/, ''));
-
-        return [...new Set(bases)].map(base => base + '/game');
-    }
+    
                                                 // carga de assets
     preload() {                                 // fondo, escenario, tile, dronN, dronA, portaN, portaA, explosiones // ver cohete despues
         this.load.image("Fondo",".//assets/fondos/FondoNaval.png");
@@ -115,6 +107,7 @@ class escena3 extends Phaser.Scene {
     }
 
     create() {
+        this.conectarSTOMP();
         this.crearFondo();
         this.crearAnimaciones();
 
@@ -133,7 +126,7 @@ class escena3 extends Phaser.Scene {
         portadronN.setMask(this.mask);
         portadronA.setMask(this.mask);
 
-        this.conectarSTOMP();
+        
 
         this.tablero = this.add.container (gameState.tableroX, gameState.tableroY);     // creaccion de elemento container que almacenara las celdas 
 
@@ -142,11 +135,25 @@ class escena3 extends Phaser.Scene {
                 new Celda(this,i,j);                    // al crearse la celda se agrega sola a container tablero
             }
         } 
-        
-
     }
 
-    // establece conexion STOMP con SockJS
+    conectarSTOMP() {
+        console.error('1111111');
+        window.conexionWS.conectar(() => {
+            console.error('222222');
+            window.conexionWS.suscribir('/topic/game', (message) => {
+                console.error('33333333333');
+                this.procesarMensaje(message);
+            });
+            this.enviarMensage(mensaje);
+        }, (error) => {
+            // Manejo de error de conexión
+            console.error('Error al conectar a WebSocket:', error);
+            alert('No se pudo conectar al servidor. Por favor, inténtalo de nuevo más tarde.');
+        });
+    }
+
+    /* establece conexion STOMP con SockJS
     conectarSTOMP() {
         if (this.connectingStomp || (this.stompClient && this.stompClient.connected)) {
             return;
@@ -176,14 +183,14 @@ class escena3 extends Phaser.Scene {
 
                 });
                 
-                this.enviarMensage(JSON.stringify(mensaje));
+                this.enviarMensage(mensaje);
             }, () => {
                 intentarConexion(index + 1);
             });
         };
 
         intentarConexion(0);
-    }
+    }*/
 
     procesarMensaje(msg) {
         switch (msg.tipoMensaje) {
@@ -269,7 +276,7 @@ class escena3 extends Phaser.Scene {
             this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
             gameState.clicks = 0;
             mensaje.accion = "PASAR";               
-            this.enviarMensage(JSON.stringify(mensaje)); 
+            this.enviarMensage(mensaje); 
         });
     }
 
@@ -316,7 +323,7 @@ class escena3 extends Phaser.Scene {
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
                 mensaje.accion = "MOVER";               
-                this.enviarMensage(JSON.stringify(mensaje));  
+                this.enviarMensage(mensaje);  
             }
         });
 
@@ -334,7 +341,7 @@ class escena3 extends Phaser.Scene {
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
                 mensaje.accion = "ATACAR";               
-                this.enviarMensage(JSON.stringify(mensaje)); 
+                this.enviarMensage(mensaje); 
             }
         });
 
@@ -352,7 +359,7 @@ class escena3 extends Phaser.Scene {
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
                 mensaje.accion = "RECARGAR";               
-                this.enviarMensage(JSON.stringify(mensaje)); 
+                this.enviarMensage(mensaje); 
             }
         });
 
@@ -370,7 +377,7 @@ class escena3 extends Phaser.Scene {
             this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
             //this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
             gameState.clicks = 0;
-            this.enviarMensage(JSON.stringify(mensaje));              
+            this.enviarMensage(mensaje);              
         });
     }
 
@@ -401,15 +408,25 @@ class escena3 extends Phaser.Scene {
     }
 
     enviarMensage(data) {
-        if (this.stompClient && this.stompClient.connected) {
+        window.conexionWS.enviar('/app/accion', data);
+        /*if (this.stompClient && this.stompClient.connected) {
             this.stompClient.send("/app/accion", {}, data);
-        }
+        }*/
     }
 
-    apagar() {
-        if (this.stompClient && this.stompClient.connected) {
+    shutdown() {
+        window.conexionWS.desuscribir('/topic/accion');
+        /*
+        if (this.domElements) {
+            this.domElements.forEach(element => {
+                if (element && element.parentNode) {
+                    element.parentNode.removeChild(element);
+                }
+            });
+        }   */
+        /*if (this.stompClient && this.stompClient.connected) {
             this.stompClient.disconnect();
-        }
+        }*/
     }
     
     update() {

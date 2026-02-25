@@ -8,7 +8,11 @@ class ConexionWS {
     }
 
     conectar(onConnectCallback, onErrorCallback) {
-        if (this.connected) return;
+        console.log('conectar');
+        if (this.connected) {
+            if (onConnectCallback) onConnectCallback();
+            return;
+        }
         const socket = new SockJS(this.url);
         this.stompClient = Stomp.over(socket);
         this.stompClient.debug = null;
@@ -22,6 +26,7 @@ class ConexionWS {
     }
 
     desconectar() {
+        console.log('desconectar');
         if (this.stompClient && this.connected) {
             this.stompClient.disconnect(() => {
                 this.connected = false;
@@ -30,12 +35,15 @@ class ConexionWS {
     }
 
     enviar(destino, cuerpo) {
+        console.log('enviar');
         if (this.stompClient && this.connected) {
             this.stompClient.send(destino, {}, JSON.stringify(cuerpo));
         }
     }
 
     suscribir(topico, callback) {
+        console.log('suscribir');
+
         if (this.stompClient && this.connected) {
             if (this.subscriptions[topico]) {
                 this.subscriptions[topico].unsubscribe();
@@ -47,6 +55,7 @@ class ConexionWS {
     }
 
     desuscribir(topico) {
+        console.log('desuscribir');
         if (this.subscriptions[topico]) {
             this.subscriptions[topico].unsubscribe();
             delete this.subscriptions[topico];

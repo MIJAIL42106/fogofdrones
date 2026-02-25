@@ -24,6 +24,7 @@ class escena1 extends Phaser.Scene {
         this.awaitingLoginResponse = false;
         this.startedPartida = false;
         this.buscandoPartida = false;
+        
         this.crearNombreInput();
 
         this.jugarBtn = this.add.text(width / 2, height - 50, 'Jugar', {
@@ -60,7 +61,7 @@ class escena1 extends Phaser.Scene {
             window.conexionWS.enviar('/app/login', { nombre: mensajeLogin.nombre });
         });
     }
-    
+
     // Centraliza la conexión y suscripción a los tópicos usando ConexionWS
     conectarSTOMP() {
         window.conexionWS.conectar(() => {
@@ -127,8 +128,8 @@ class escena1 extends Phaser.Scene {
     }
 
     // La conexión y suscripción ahora se maneja con ConexionWS en create()
-
-    // Enviar mensaje usando ConexionWS
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Enviar mensaje usando ConexionWS // no se usa
     enviarMensage(data) {
         window.conexionWS.enviar('/app/login', data);
     }
@@ -163,6 +164,8 @@ class escena1 extends Phaser.Scene {
     shutdown() {
         window.conexionWS.desuscribir('/topic/login');
         window.conexionWS.desuscribir('/topic/partida-lista');
+        window.conexionWS.desconectar();
+        
         if (this.domElements) {
             this.domElements.forEach(element => {
                 if (element && element.parentNode) {
