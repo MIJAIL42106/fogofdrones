@@ -116,6 +116,7 @@ public class GameHandler {
 					} else {
 						// Enviar mensaje de error al jugador
 						VoMensaje mensajeError = VoMensaje.builder()
+							.tipoMensaje(3)
 							.nombre(nombre)
 							.evento("No es tu turno")
 							.build();//new VoMensaje(nombre, 3); // "No es tu turno"
@@ -190,7 +191,7 @@ public class GameHandler {
 				LOGGER.info("Jugador '{}' asignado como jugador1 (NAVAL)", nombre);
 				
 				// Notificar al jugador 1 que es NAVAL
-				VoMensaje mensaje = VoMensaje.builder()
+				VoMensaje mensaje = VoMensaje.builder()	// ver escena 1
 					.nombre(nombre)
 					.equipo(Equipo.NAVAL)
 					.build();//new VoMensaje(nombre, Equipo.NAVAL);
@@ -205,7 +206,7 @@ public class GameHandler {
 				LOGGER.info("Partida creada con clave '{}'", clave);
 
 				// Notificar al jugador 2 que es AEREO
-				VoMensaje mensaje = VoMensaje.builder()
+				VoMensaje mensaje = VoMensaje.builder()	// ver escena 1
 					.nombre(nombre)
 					.equipo(Equipo.AEREO)
 					.build();//new VoMensaje(nombre, Equipo.AEREO);
@@ -214,7 +215,7 @@ public class GameHandler {
 				
 				// Notificar a ambos jugadores que la partida está lista
 				String canalPartida = getCanalPartida(servicios.getPartidaJugador(jugador2));
-				VoMensaje mensajeJugador1 = VoMensaje.builder()
+				VoMensaje mensajeJugador1 = VoMensaje.builder() // ver escena 1
 					.nombre(jugador1)
 					.equipo(Equipo.NAVAL)
 					.canal(canalPartida)
@@ -223,7 +224,7 @@ public class GameHandler {
 				String respuestaJugador1 = mapper.writeValueAsString(mensajeJugador1);
 				messagingTemplate.convertAndSend("/topic/partida-lista", respuestaJugador1);
 				
-				VoMensaje mensajeJugador2 = VoMensaje.builder()
+				VoMensaje mensajeJugador2 = VoMensaje.builder()	// ver escena 1
 					.nombre(nombre)
 					.equipo(Equipo.AEREO)
 					.canal(canalPartida)
@@ -265,7 +266,7 @@ public class GameHandler {
 
 	private void enviarErrorLogin(String nombre, String error) {
 		try {
-			VoMensaje mensajeError = VoMensaje.builder()
+			VoMensaje mensajeError = VoMensaje.builder()	// ver escena1
 				.nombre(nombre)
 				.evento(error)
 				.build();	///new VoMensaje(nombre, error);
@@ -333,13 +334,14 @@ public class GameHandler {
 		}
 		try {
 			//VoMensaje mensajeError = new VoMensaje(nombre, 6); // "solicitud de guardado"
-			VoMensaje mensajeError = VoMensaje.builder()
+			VoMensaje mensajeGuardado = VoMensaje.builder()
 				.tipoMensaje(2)
 				.nombre(nombre)
-				.evento("solicitud de guardado")
+				.evento("SOLICITUD")	// "solicitud de guardado"
 				.build(); // "solicitud de guardado"
-			String respuesta = mapper.writeValueAsString(mensajeError);
-			messagingTemplate.convertAndSend("/topic/game", respuesta);
+			String respuesta = mapper.writeValueAsString(mensajeGuardado);
+			String canal = getCanalPartida(p);
+			messagingTemplate.convertAndSend(canal, respuesta);
 		} catch (Exception e) {
 
 		}
@@ -354,12 +356,14 @@ public class GameHandler {
 			solicitante = p.getJugadorAereo().getNombre();
 		}
 		try {
-			VoMensaje mensajeError = VoMensaje.builder()
+			VoMensaje mensajeGuardado = VoMensaje.builder()
+				.tipoMensaje(2)
 				.nombre(solicitante)
-				.evento("solicitud de guardado rechazada")
+				.evento("RECHAZADA")	//"solicitud de guardado rechazada"
 				.build();//new VoMensaje(solicitante, 7); // "solicitud de guardado rechazada"
-			String respuesta = mapper.writeValueAsString(mensajeError);
-			messagingTemplate.convertAndSend("/topic/game", respuesta);
+			String respuesta = mapper.writeValueAsString(mensajeGuardado);
+			String canal = getCanalPartida(p);
+			messagingTemplate.convertAndSend(canal, respuesta);	// antes "/topic/game"
 		} catch (Exception e) {
 
 		}
@@ -376,12 +380,14 @@ public class GameHandler {
 		try {
 			servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre());
 
-			VoMensaje mensajeError = VoMensaje.builder()
+			VoMensaje mensajeGuardado = VoMensaje.builder()
+				.tipoMensaje(2)
 				.nombre(solicitante)
-				.evento("solicitud de guardado aceptada")
-				.build(); //new VoMensaje(solicitante, 8); // "solicitud de guardado rechazada"
-			String respuesta = mapper.writeValueAsString(mensajeError);
-			messagingTemplate.convertAndSend("/topic/game", respuesta);
+				.evento("ACEPTADA")	// "solicitud de guardado aceptada"
+				.build(); //new VoMensaje(solicitante, 8); // "solicitud de guardado aceptada"
+			String respuesta = mapper.writeValueAsString(mensajeGuardado);
+			String canal = getCanalPartida(p);
+			messagingTemplate.convertAndSend(canal, respuesta);
 		} catch (Exception e) {
 
 		}
@@ -395,6 +401,7 @@ public class GameHandler {
 		try {
 			// Crear VoMensaje con la fase y la grilla completa
 			VoMensaje mensaje = VoMensaje.builder()
+				.tipoMensaje(1)
 				.fasePartida(p.getFasePartida())
 				.grilla(p.getTablero().getGrillaLineal())
 				.build(); //new VoMensaje(p.getFasePartida(), p.getTablero());

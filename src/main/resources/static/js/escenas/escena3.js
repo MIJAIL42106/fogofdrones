@@ -31,6 +31,15 @@ const mensaje = {
     yf: 15
 };
 
+const tipoMensaje = Object.freeze({ // una forma de hacer tipo enumerado en js
+    LUNES: 0,
+    ESTADOPARTIDA: 1,
+    GUARDADO: 2,
+    ERROR: 3,
+    NOTIFICACION: 4,
+});
+
+// podria eliminarse clase celda completamente y usar un metodo?
 class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
         gameState.escala = 22.36;                       // escala de posiciones
@@ -139,22 +148,26 @@ class escena3 extends Phaser.Scene {
 
     procesarMensaje(msg) {
         switch (msg.tipoMensaje) {
-            case 0: {
+            case tipoMensaje.LUNES: {   // evaluar si todavia lo necesitamos, equipo viene del menu, probablemente hay que cambiar gamehandler
                 if (mensaje.nombre === msg.nombre) {
                     gameState.equipo = msg.equipo.toString();
                 }
             } break;
-            case 1: {
+            case tipoMensaje.ESTADOPARTIDA: {
+                // actualizado de fase de partida
                 if (gameState.fase !== msg.fasePartida.toString()) {
+                    // si pasa a jugando se eliminan los elementos de despliegue iniciales
                     if (msg.fasePartida.toString() === "JUGANDO") {
                         this.zonaDesp.destroy();
                         this.botonPasar(this.desplegarBtn);
                     } 
                     gameState.fase = msg.fasePartida.toString();
                 }
+                // limpiado de mascara y drones
                 this.forma.clear(); 
                 this.forma.fillStyle(0xff0000, 0);
                 this.eliminarDrones();
+                // actualizado de tablero celda a celda, junto a drones y mascara
                 var i = 0;
                 msg.grilla.forEach((cel) => {
                     let celda = this.tablero.getAt(i);
@@ -172,25 +185,35 @@ class escena3 extends Phaser.Scene {
                     }
                     i++;
                 });
-
             } break;
-            case 2: {  // otra forma podria ser pasar el mensaje o el mensaje y un codigo par tido de error, error de mostrar o de hacer algo
+            case tipoMensaje.GUARDADO: {
                 if (mensaje.nombre === msg.nombre) { // alerta error al jugador afectado
-                    alert(msg.error);
-                }
-                        /*
-                        case 6: {
+                    switch (msg.evento) {
+                        case "SOLICITUD":{
                             this.solicitarGuardado();
-                        } break;
-                        case 7: {
+                        }break;
+                        case "RECHAZADA":{
                             alert("Solicitud de guardado rechazada");
+                            gameState.solicitandoGuardado = false;
                             this.oscurecer.destroy();
-                        } break;
-                        case 8: {
+                        }break;
+                        case "ACEPTADA":{
                             alert("Solicitud de guardado aceptada");
                             this.scene.stop('partida');
                             this.scene.start('menu');
-                        } break;*/
+                        }break;  
+                    }
+                }
+            }break;
+            case tipoMensaje.ERROR: { 
+                if (mensaje.nombre === msg.nombre) { // alerta error a jugador
+                    alert("err:"+msg.evento);
+                }
+            }break;
+            case tipoMensaje.NOTIFICACION: { 
+                if (mensaje.nombre === msg.nombre) { // notifica a jugador
+                    alert("noti:"+msg.evento);
+                }
             }break;
         } 
     }
@@ -402,7 +425,7 @@ class escena3 extends Phaser.Scene {
                 mensaje.accion = "GUARDAR";               
                 this.enviarMensage(mensaje); 
                 gameState.solicitandoGuardado = true;
-                //this.oscurecer = this.add.rectangle(950, 540, 1920, 1080, gameState.niebla).setDepth(2).setAlpha(0.4);
+                this.oscurecer = this.add.rectangle(950, 540, 1920, 1080, gameState.niebla).setDepth(2).setAlpha(0.4);
             }
         });
     }
