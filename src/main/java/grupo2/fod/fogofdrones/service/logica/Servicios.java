@@ -111,6 +111,7 @@ public class Servicios{
         if (partida != null) {
             Persistencia persistencia = new Persistencia(partida, nombre1, nombre2);
             repoPartidas.save(persistencia);
+            eliminarPartida(nombre1, nombre2);
         }
     }
 

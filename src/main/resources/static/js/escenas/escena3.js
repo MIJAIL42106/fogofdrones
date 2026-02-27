@@ -18,7 +18,8 @@ gameState = {
     portaAX: 63,
     portaAY: 0,
     escala: 22.36,
-    tamCelda: 23
+    tamCelda: 23,
+    solicitandoGuardado: false
 }; 
 
 const mensaje = {
@@ -34,7 +35,7 @@ class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
         gameState.escala = 22.36;                       // escala de posiciones
                                                 // añade rectangulo en posicion correspondiente a indices
-        this.tile = grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes);
+        this.tile = grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes).setDepth(1);
         this.tile.setAlpha(0.3);                // ajuste de opacidad para celdas de grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
@@ -99,40 +100,21 @@ class escena3 extends Phaser.Scene {
         this.load.image("Guardar",".//assets/fondos/guardar.png");
         this.load.image("Pasar",".//assets/fondos/pasar_turno.png");
         this.load.image("Desplegar",".//assets/fondos/desplegar.png");
+        this.load.image("Aceptar",".//assets/fondos/Aceptar.png");
+        this.load.image("Rechazar",".//assets/fondos/Rechazar.png");
         this.load.image("PortaN",".//assets/sprites/PortaVerde-64x64x1.png");
         this.load.image("PortaA",".//assets/sprites/PortaRojo-64x64x1.png");
         this.load.spritesheet("DronN",".//assets/sprites/DronVerde-64x64x2.png",{frameWidth: 64, frameHeight: 64});
         this.load.spritesheet("DronA",".//assets/sprites/DronRojo-64x64x2.png",{frameWidth: 64, frameHeight: 64});
-
+        this.load.spritesheet("Impactos",".//assets/sprites/Impactos-399x399x11x6.png",{frameWidth: 399, frameHeight: 399});
     }
 
     create() {
         this.conectarSTOMP();
-        this.crearFondo();
+        this.crearInterfaz();
         this.crearAnimaciones();
-
-        // podria hacerse metodo crearPortadrones
-        const portadronN = this.add.image(gameState.portaNX*gameState.escala + gameState.tableroX + 11, gameState.portaNY*gameState.escala + gameState.tableroY-27,"PortaN").setDepth(2).setOrigin(0.5, 0.5);
-        portadronN.setScale(1.5);
-        const portadronA = this.add.image(gameState.portaAX*gameState.escala + gameState.tableroX - 11, gameState.portaAY*gameState.escala + gameState.tableroY+27,"PortaA").setDepth(2).setOrigin(0.5, 0.5);
-        portadronA.setScale(1.5);
-        portadronA.angle = 180;
-
-        this.forma = this.add.graphics().setDepth(3);
-        this.forma.clear();
-        this.forma.fillStyle(0xffffff);
-        this.mask = this.forma.createGeometryMask();
-
-        portadronN.setMask(this.mask);
-        portadronA.setMask(this.mask);   
-
-        this.tablero = this.add.container (gameState.tableroX, gameState.tableroY);     // creaccion de elemento container que almacenara las celdas 
-
-        for (var i = 0; i < gameState.alto; i++) {      // creacion de celdas en for anidado
-            for (var j = 0; j< gameState.ancho; j++) {  // indeces i y j siven para calcular posicion correspondiente x e y
-                new Celda(this,i,j);                    // al crearse la celda se agrega sola a container tablero
-            }
-        } 
+        this.crearPortadrones();
+        this.crearTablero();
     }
 
     conectarSTOMP() {
@@ -140,7 +122,7 @@ class escena3 extends Phaser.Scene {
             window.conexionWS.suscribir('/topic/game', (message) => {
                 this.procesarMensaje(message);
             });
-            this.enviarMensage(mensaje);
+            //this.enviarMensage(mensaje);
         }, (error) => {
             // Manejo de error de conexión
         });
@@ -157,7 +139,7 @@ class escena3 extends Phaser.Scene {
                 if (gameState.fase !== msg.fasePartida.toString()) {
                     if (msg.fasePartida.toString() === "JUGANDO") {
                         this.zonaDesp.destroy();
-                        this.botonPasar(this.pasarBtn);
+                        this.botonPasar(this.desplegarBtn);
                     } 
                     gameState.fase = msg.fasePartida.toString();
                 }
@@ -174,7 +156,7 @@ class escena3 extends Phaser.Scene {
                         if (cel.aereo)
                             this.dibujarDronAereo(celda.x, celda.y);
                         if( (celda.x <= 1*gameState.tamCelda && celda.y >= 32*gameState.tamCelda) || (celda.x >= 60*gameState.tamCelda && celda.y <= 2*gameState.tamCelda) )  {
-                                this.forma.fillRect(celda.x + gameState.tableroX -11, celda.y + gameState.tableroY -11, gameState.tamCelda, gameState.tamCelda);
+                                this.forma.fillRect(celda.x + gameState.tableroX -gameState.tamCelda / 2, celda.y + gameState.tableroY -gameState.tamCelda / 2, gameState.tamCelda, gameState.tamCelda);
                         }  
                     } else {
                         celda.setFillStyle(gameState.niebla);
@@ -183,15 +165,43 @@ class escena3 extends Phaser.Scene {
                 });
 
             } break;
-            case 2: {
-                if (mensaje.nombre === msg.nombre) { // alerta error
-                    alert(msg.error);
+            case 2: {  // otra forma podria ser pasar el mensaje o el mensaje y un codigo par tido de error, error de mostrar o de hacer algo
+                if (mensaje.nombre === msg.nombre) { 
+                    switch (msg.codError) {
+                        case 1: {
+                            alert("Nombre inválido");
+                        } break;
+                        case 2: {
+                            alert("El jugador ya está en una partida activa");
+                        } break;
+                        case 3: {
+                            alert("No es tu turno");
+                        } break;
+                        case 4: {
+                            alert("No se pudo asignar jugador. Intenta nuevamente");
+                        } break;
+                        case 5: {
+                            alert("Error interno al crear jugador");
+                        } break;
+                        case 6: {
+                            this.solicitarGuardado();
+                        } break;
+                        case 7: {
+                            alert("Solicitud de guardado rechazada");
+                            this.oscurecer.destroy();
+                        } break;
+                        case 8: {
+                            alert("Solicitud de guardado aceptada");
+                            this.scene.stop('partida');
+                            this.scene.start('menu');
+                        } break;
+                    }
                 }
             } break;
         }
     }
 
-    crearAnimaciones(){
+    crearAnimaciones() {
         this.anims.create({
             key: 'idleN',
             frames: this.anims.generateFrameNumbers('DronN', { start: 0, end: 1 }),
@@ -208,71 +218,109 @@ class escena3 extends Phaser.Scene {
 
         //animaciones pantalla secundaria
     }
+    
+    crearPortadrones() {
+        const portadronN = this.add.image(gameState.portaNX*gameState.escala + gameState.tableroX + gameState.tamCelda / 2, gameState.portaNY*gameState.escala + gameState.tableroY-27,"PortaN").setDepth(2).setOrigin(0.5, 0.5);
+        portadronN.setScale(1.5);
+        const portadronA = this.add.image(gameState.portaAX*gameState.escala + gameState.tableroX - gameState.tamCelda / 2, gameState.portaAY*gameState.escala + gameState.tableroY+27,"PortaA").setDepth(2).setOrigin(0.5, 0.5);
+        portadronA.setScale(1.5);
+        portadronA.angle = 180;
+
+        this.forma = this.add.graphics().setDepth(3);
+        this.forma.clear();
+        this.forma.fillStyle(0xffffff);
+        this.mask = this.forma.createGeometryMask();
+
+        portadronN.setMask(this.mask);
+        portadronA.setMask(this.mask); 
+    }
+
+    crearTablero() {
+        this.tablero = this.add.container (gameState.tableroX, gameState.tableroY);     // creaccion de elemento container que almacenara las celdas 
+        for (var i = 0; i < gameState.alto; i++) {      // creacion de celdas en for anidado
+            for (var j = 0; j< gameState.ancho; j++) {  // indeces i y j siven para calcular posicion correspondiente x e y
+                new Celda(this,i,j);                    // al crearse la celda se agrega sola a container tablero
+            }
+        } 
+    }
+    
     // podria no pasarse el boton
     botonPasar(boton) {
         const p = boton;
         var pos = boton.x;
         p.destroy();
-        var botonDesplegar = this.add.image(pos,960,"Pasar").setDepth(2).setInteractive();
+        var pasarBtn = this.add.image(pos,960,"Pasar").setDepth(2).setInteractive();
         
-        botonDesplegar.on('pointerover', function() {     // asigna interaccion al clikear
-            botonDesplegar.setTint(gameState.colorSelec);
-            botonDesplegar.setScale(1.1);               
+        pasarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+            if ( ! gameState.solicitandoGuardado) {
+                pasarBtn.setTint(gameState.colorSelec);
+                pasarBtn.setScale(1.1);               
+            }
         });
-        botonDesplegar.on('pointerout', function() {     // asigna interaccion al clikear
-            botonDesplegar.clearTint();
-            botonDesplegar.setScale(1);               
+        pasarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+            if ( ! gameState.solicitandoGuardado) {
+                pasarBtn.clearTint();
+                pasarBtn.setScale(1);    
+            }           
         });
 
         //boton pasar turno con skin alternativa para desplegar al inicio
-        botonDesplegar.on('pointerdown', () => {     // asigna interaccion al clikear
-            this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
-            this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
-            gameState.clicks = 0;
-            mensaje.accion = "PASAR";               
-            this.enviarMensage(mensaje); 
+        pasarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+            if ( ! gameState.solicitandoGuardado) {
+                this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
+                gameState.clicks = 0;
+                mensaje.accion = "PASAR";               
+                this.enviarMensage(mensaje); 
+            }
         });
     }
 
-    crearFondo() {
+    crearInterfaz() {
         // 960 y 540 podrian obtenerse de camara main
-        var fondo = this.add.image(960,540,"Fondo").setDepth(1);   // creacion de fondo en posicion    // podria calcularse centro despues
+        var fondo = this.add.image(960,540,"Fondo").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
         fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
         var escenario = this.add.image(38, 48,"Escenario").setOrigin(0, 0).setDepth(0);
         escenario.setScale(1);
         // this.pantallaImpactos = this.add.sprite(xAbs , yAbs ,"").setScale(1.5).setDepth(2);
         
         this.zonaDesp;
-        const anchoZona = 15 * gameState.tamCelda-11; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando
+        const anchoZona = 15 * gameState.tamCelda-gameState.tamCelda / 2; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando
         const altoZona = (gameState.alto-1) * gameState.tamCelda;   // -1 
         if (gameState.equipo === "NAVAL") {
-            this.zonaDesp = this.add.rectangle(gameState.tableroX-11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
+            this.zonaDesp = this.add.rectangle(gameState.tableroX-gameState.tamCelda / 2, gameState.tableroY-gameState.tamCelda / 2, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
         } else {
-            this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+11, gameState.tableroY-11, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
+            this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+gameState.tamCelda / 2, gameState.tableroY-gameState.tamCelda / 2, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
         }
         this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.2).setDepth(1); 
         
         const tamBtn = 333 ;
         const sep = 35 ;
         var pos = 200 ;
-        var moverBtn = this.add.image(pos,960,"Mover").setDepth(2).setInteractive();
+        var moverBtn = this.add.image(pos,960,"Mover").setDepth(0).setInteractive();
         pos += tamBtn + sep;
-        var atacarBtn = this.add.image(pos,960,"Atacar").setDepth(2).setInteractive();
+        var atacarBtn = this.add.image(pos,960,"Atacar").setDepth(0).setInteractive();
         pos += tamBtn + sep;
-        var recargarBtn = this.add.image(pos,960,"Recargar").setDepth(2).setInteractive();
+        var recargarBtn = this.add.image(pos,960,"Recargar").setDepth(0).setInteractive();
         pos += tamBtn + sep;
-        this.pasarBtn = this.add.image(pos,960,"Desplegar").setDepth(2).setInteractive();
+        this.desplegarBtn = this.add.image(pos,960,"Desplegar").setDepth(0).setInteractive();
+        pos += tamBtn + sep *1.5;
+        var guardarBtn = this.add.image(pos,540,"Guardar").setDepth(0).setInteractive();
 
         moverBtn.on('pointerover', function() {     // asigna interaccion al clikear 
-            moverBtn.setTint(gameState.colorSelec);
-            moverBtn.setScale(1.1);               
+            if ( ! gameState.solicitandoGuardado) {
+                moverBtn.setTint(gameState.colorSelec);
+                moverBtn.setScale(1.1);            
+            }   
         });
         moverBtn.on('pointerout', function() {     // asigna interaccion al clikear
-            moverBtn.clearTint();
-            moverBtn.setScale(1);               
+            if ( ! gameState.solicitandoGuardado) {
+                moverBtn.clearTint();
+                moverBtn.setScale(1);    
+            }           
         });
         moverBtn.on('pointerdown', () => {     // asigna interaccion al clikear
-            if(gameState.fase !== "DESPLIEGUE") {
+            if(gameState.fase === "JUGANDO" && ! gameState.solicitandoGuardado) {
                 this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
@@ -282,15 +330,19 @@ class escena3 extends Phaser.Scene {
         });
 
         atacarBtn.on('pointerover', function() {     // asigna interaccion al clikear
-            atacarBtn.setTint(gameState.colorSelec);
-            atacarBtn.setScale(1.1);               
+            if ( ! gameState.solicitandoGuardado) {
+                atacarBtn.setTint(gameState.colorSelec);
+                atacarBtn.setScale(1.1);               
+            }
         });
         atacarBtn.on('pointerout', function() {     // asigna interaccion al clikear
-            atacarBtn.clearTint();
-            atacarBtn.setScale(1);               
+            if ( ! gameState.solicitandoGuardado) {
+                atacarBtn.clearTint();
+                atacarBtn.setScale(1);    
+            }           
         });
         atacarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
-            if(gameState.fase !== "DESPLIEGUE") {
+            if(gameState.fase === "JUGANDO" && !gameState.solicitandoGuardado ) {
                 this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
@@ -300,15 +352,19 @@ class escena3 extends Phaser.Scene {
         });
 
         recargarBtn.on('pointerover', function() {     // asigna interaccion al clikear
-            recargarBtn.setTint(gameState.colorSelec);
-            recargarBtn.setScale(1.1);               
+            if ( ! gameState.solicitandoGuardado) {
+                recargarBtn.setTint(gameState.colorSelec);
+                recargarBtn.setScale(1.1); 
+            }             
         });
         recargarBtn.on('pointerout', function() {     // asigna interaccion al clikear
-            recargarBtn.clearTint();
-            recargarBtn.setScale(1);               
+            if ( !gameState.solicitandoGuardado) {
+                recargarBtn.clearTint();
+                recargarBtn.setScale(1);    
+            }           
         });
         recargarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
-            if(gameState.fase !== "DESPLIEGUE") {
+            if(gameState.fase === "JUGANDO" && ! gameState.solicitandoGuardado) {
                 this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
                 gameState.clicks = 0;
@@ -317,21 +373,86 @@ class escena3 extends Phaser.Scene {
             }
         });
 
-        this.pasarBtn.on('pointerover', () => {     // asigna interaccion al clikear
-            this.pasarBtn.setTint(gameState.colorSelec);
-            this.pasarBtn.setScale(1.1);               
+        this.desplegarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+            this.desplegarBtn.setTint(gameState.colorSelec);
+            this.desplegarBtn.setScale(1.1);               
         });
-        this.pasarBtn.on('pointerout', () => {     // asigna interaccion al clikear
-            this.pasarBtn.clearTint();
-            this.pasarBtn.setScale(1);               
+        this.desplegarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+            this.desplegarBtn.clearTint();
+            this.desplegarBtn.setScale(1);               
         });
 
         //boton pasar turno con skin alternativa para desplegar al inicio
-        this.pasarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        this.desplegarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
             this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
             //this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
             gameState.clicks = 0;
             this.enviarMensage(mensaje);              
+        });
+    
+        guardarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+            if ( ! gameState.solicitandoGuardado) {
+                guardarBtn.setTint(gameState.colorSelec);
+                guardarBtn.setScale(1.1);               
+            }
+        });
+        guardarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+            if ( ! gameState.solicitandoGuardado) {
+                guardarBtn.clearTint();
+                guardarBtn.setScale(1);    
+            }           
+        });
+        guardarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+            if(gameState.fase === "JUGANDO" && ! gameState.solicitandoGuardado) {
+                gameState.clicks = 0;
+                mensaje.accion = "GUARDAR";               
+                this.enviarMensage(mensaje); 
+                gameState.solicitandoGuardado = true;
+                //this.oscurecer = this.add.rectangle(950, 540, 1920, 1080, gameState.niebla).setDepth(2).setAlpha(0.4);
+            }
+        });
+    }
+
+    solicitarGuardado(){
+        gameState.solicitandoGuardado = true;
+        var oscurecer = this.add.rectangle(950, 540, 1920, 1080, gameState.niebla).setDepth(2).setAlpha(0.4);
+        var alerta = this.add.rectangle(950, 540, 1920*0.6, 1080*0.8, gameState.niebla).setDepth(3);
+        var rechazarBtn = this.add.image(950 - 333, 800,"Rechazar").setInteractive().setDepth(4);
+        var aceptarBtn = this.add.image(950 + 333, 800,"Aceptar").setInteractive().setDepth(4);
+
+        rechazarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+        rechazarBtn.setTint(gameState.colorSelec);
+        rechazarBtn.setScale(1.1);               
+        });
+        rechazarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+            rechazarBtn.clearTint();
+            rechazarBtn.setScale(1);               
+        });
+        rechazarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+            gameState.clicks = 0;
+            mensaje.accion = "RECHAZAR";               
+            this.enviarMensage(mensaje); 
+            gameState.solicitandoGuardado = false;
+            oscurecer.destroy();
+            alerta.destroy();
+            rechazarBtn.destroy();
+            aceptarBtn.destroy();
+        });
+
+        aceptarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+            aceptarBtn.setTint(gameState.colorSelec);
+            aceptarBtn.setScale(1.1);               
+        });
+        aceptarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+            aceptarBtn.clearTint();
+            aceptarBtn.setScale(1);               
+        });
+        aceptarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+            gameState.clicks = 0;
+            mensaje.accion = "ACEPTAR";               
+            this.enviarMensage(mensaje); 
+            this.scene.stop('partida');
+            this.scene.start('menu');
         });
     }
 

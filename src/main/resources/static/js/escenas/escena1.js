@@ -16,6 +16,8 @@ class escena1 extends Phaser.Scene {
     }
     preload() {
         this.load.image("FondoMenu",".//assets/fondos/fondo_lobby.png");
+        this.load.image("Buscar",".//assets/fondos/Buscar.png");
+        this.load.image("Cargar",".//assets/fondos/Cargar.png");
     }  
 
     create() { 

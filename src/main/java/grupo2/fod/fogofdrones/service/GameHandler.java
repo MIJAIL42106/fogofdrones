@@ -43,13 +43,13 @@ public class GameHandler {
 			LOGGER.info("Login solicitado por '{}'", nombre);
 
 			if (nombre == null || nombre.trim().isEmpty()) {
-				enviarErrorLogin("", "Nombre inválido");
+				enviarErrorLogin("", 1); // "Nombre inválido"
 				LOGGER.warn("Login rechazado: nombre vacío o nulo");
 				return;
 			}
 
 			if (servicios.existePartida(nombre)) {
-				enviarErrorLogin(nombre, "El jugador ya está en una partida activa");
+				enviarErrorLogin(nombre, 2); //"El jugador ya está en una partida activa"
 				LOGGER.warn("Login rechazado para '{}': ya tiene partida activa", nombre);
 			} else {
 				handleCrearJugador(nombre);
@@ -69,11 +69,62 @@ public class GameHandler {
 
 			// Obtener la partida asociada a este jugador
 			Partida p = servicios.getPartidaJugador(nombre);
+			// accion fuera de turno para procesar solicitud de guardado
+			String accion = (String) data.get("accion");
+			System.out.println("accion: "+ accion);
+
+			switch (accion) {
+				case "GUARDAR":
+					System.out.println("case GUARDAR");
+					handleGuardar(nombre, p);
+					break;
+				case "RECHAZAR":
+					System.out.println("case RECHAZAR");
+					handleRechazar(nombre, p);
+					break;
+				case "ACEPTAR":
+					System.out.println("case ACEPTAR");
+					handleAceptar(nombre, p);
+					break;
+				default: 
+					if (p.esMiTurno(nombre)) {
+						// Si es el turno del jugador, procesar la acción
+						if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
+							handleDesplegar(data, p);
+						} else {
+							switch (accion) {
+								case "MOVER":
+									handleMover(data, p);
+									break;
+								case "ATACAR":
+									handleAtacar(data, p);
+									break;
+								case "RECARGAR":
+									handleRecargar(data, p);
+									break;
+								case "PASAR":
+									p.terminarTurno();
+									break;
+							}
+						}
+						
+						// Enviar estado actualizado a todos los clientes
+						String respuesta = mensajeRetorno(p);
+						messagingTemplate.convertAndSend("/topic/game", respuesta);
+						
+					} else {
+						// Enviar mensaje de error al jugador
+						VoMensaje mensajeError = new VoMensaje(nombre, 3); // "No es tu turno"
+						String respuesta = mapper.writeValueAsString(mensajeError);
+						messagingTemplate.convertAndSend("/topic/game", respuesta);
+					}
+				break;	
+			}
 			
+
+			/* 
 			if (p.esMiTurno(nombre)) {
 				// Si es el turno del jugador, procesar la acción
-				String accion = (String) data.get("accion");
-				
 				if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
 					handleDesplegar(data, p);
 				} else {
@@ -90,9 +141,6 @@ public class GameHandler {
 						case "PASAR":
 							p.terminarTurno();
 							break;
-						default:
-							//Acción desconocida
-							break;
 					}
 				}
 				
@@ -100,12 +148,27 @@ public class GameHandler {
 				String respuesta = mensajeRetorno(p);
 				messagingTemplate.convertAndSend("/topic/game", respuesta);
 				
-			} else {
-				// Enviar mensaje de error al jugador
-				VoMensaje mensajeError = new VoMensaje(nombre, "No es tu turno");
-				String respuesta = mapper.writeValueAsString(mensajeError);
-				messagingTemplate.convertAndSend("/topic/game", respuesta);
 			}
+			switch (accion) {
+				case "GUARDAR":
+					System.out.println("case GUARDAR");
+					handleGuardar(nombre, p);
+					break;
+				case "RECHAZAR":
+					System.out.println("case RECHAZAR");
+					handleRechazar(nombre, p);
+					break;
+				case "ACEPTAR":
+					System.out.println("case ACEPTAR");
+					handleAceptar(nombre, p);
+					break;
+				default:
+					// Enviar mensaje de error al jugador
+					VoMensaje mensajeError = new VoMensaje(nombre, 3); // "No es tu turno"
+					String respuesta = mapper.writeValueAsString(mensajeError);
+					messagingTemplate.convertAndSend("/topic/game", respuesta);
+				break;	
+			}*/
 			
 		} catch (Exception e) {
 			//Error procesando acción: 
@@ -158,16 +221,16 @@ public class GameHandler {
 				String estadoInicial = mensajeRetorno(p);
 				messagingTemplate.convertAndSend("/topic/game", estadoInicial);
 			} else {
-				enviarErrorLogin(nombre, "No se pudo asignar jugador. Intenta nuevamente");
+				enviarErrorLogin(nombre, 4); // "No se pudo asignar jugador. Intenta nuevamente"
 				LOGGER.warn("Login no asignado para '{}'. Estado actual jugador1='{}', jugador2='{}'", nombre, jugador1, jugador2);
 			}
 		} catch (Exception e) {
 			LOGGER.error("Error al crear jugador '{}'", nombre, e);
-			enviarErrorLogin(nombre, "Error interno al crear jugador");
+			enviarErrorLogin(nombre, 5); // "Error interno al crear jugador"
 		}
 	}
 
-	private void enviarErrorLogin(String nombre, String error) {
+	private void enviarErrorLogin(String nombre, int error) {
 		try {
 			VoMensaje mensajeError = new VoMensaje(nombre, error);
 			String respuesta = mapper.writeValueAsString(mensajeError);
@@ -223,6 +286,63 @@ public class GameHandler {
 		Posicion pos = new Posicion(x, y);
 		
 		p.recargarMunicion(pos);
+	}
+
+	public void handleGuardar(String solicitante, Partida p) {
+		String nombre = null;
+		if ( solicitante.equals(p.getJugadorAereo().getNombre()) ) {
+			nombre = p.getJugadorNaval().getNombre();
+		} else {
+			nombre = p.getJugadorAereo().getNombre();
+		}
+		try {
+			//VoMensaje mensajeError = new VoMensaje(nombre, 6); // "solicitud de guardado"
+			VoMensaje mensajeError = VoMensaje.builder()
+				.tipoMensaje(2)
+				.nombre(nombre)
+				.codError(6)
+				.build(); // "solicitud de guardado"
+			String respuesta = mapper.writeValueAsString(mensajeError);
+			messagingTemplate.convertAndSend("/topic/game", respuesta);
+		} catch (Exception e) {
+
+		}
+	}
+
+	public void handleRechazar(String nombre, Partida p) {
+		System.out.println("rechazar guardado");
+		String solicitante = null;
+		if ( nombre.equals(p.getJugadorAereo().getNombre()) ) {
+			solicitante = p.getJugadorNaval().getNombre();
+		} else {
+			solicitante = p.getJugadorAereo().getNombre();
+		}
+		try {
+			VoMensaje mensajeError = new VoMensaje(solicitante, 7); // "solicitud de guardado rechazada"
+			String respuesta = mapper.writeValueAsString(mensajeError);
+			messagingTemplate.convertAndSend("/topic/game", respuesta);
+		} catch (Exception e) {
+
+		}
+	}
+
+	public void handleAceptar(String nombre, Partida p) {
+		System.out.println("aceptar guardado");
+		String solicitante = null;
+		if ( nombre.equals(p.getJugadorAereo().getNombre()) ) {
+			solicitante = p.getJugadorNaval().getNombre();
+		} else {
+			solicitante = p.getJugadorAereo().getNombre();
+		}
+		try {
+			servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre());
+
+			VoMensaje mensajeError = new VoMensaje(solicitante, 8); // "solicitud de guardado rechazada"
+			String respuesta = mapper.writeValueAsString(mensajeError);
+			messagingTemplate.convertAndSend("/topic/game", respuesta);
+		} catch (Exception e) {
+
+		}
 	}
 
 	
