@@ -12,6 +12,7 @@ gameState = {
     clicks: 0,
     fase: "",
     equipo: "",
+    canalPartida: "",
     drones: [],
     portaNX: 0,
     portaNY: 35,
@@ -97,7 +98,7 @@ class escena3 extends Phaser.Scene {
     init(data){
         mensaje.nombre = data.nombre;
         gameState.equipo = data.equipo;
-        this.canalPartida = data.canal;
+        gameState.canalPartida = data.canal;
     }
     
                                                 // carga de assets
@@ -124,18 +125,23 @@ class escena3 extends Phaser.Scene {
         this.crearInterfaz();
         this.crearAnimaciones();
         //this.pantallaImpactos.play('impactoPortaA');
-        this.conectarSTOMP();
         this.crearPortadrones();
         this.crearTablero();
+        this.conectarSTOMP();
     }
 
     conectarSTOMP() {
         window.conexionWS.conectar(() => {
             // suscribir al canal específico de la partida (y mantener /topic/game como respaldo)
-            if (this.canalPartida) {
-                window.conexionWS.suscribir(this.canalPartida, (message) => {
+            if (gameState.canalPartida) {
+                window.conexionWS.suscribir(gameState.canalPartida, (message) => {
                     this.procesarMensaje(message);
                 });
+                
+                // Una vez suscrito, pedirle al servidor el estado actual
+                // Esto sincroniza a los jugadores que se conecten después
+                mensaje.accion = "ACTUALIZAR";
+                this.enviarMensage(mensaje);
             }
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // antiguo canal genérico queda vigente para compatibilidad
@@ -149,6 +155,7 @@ class escena3 extends Phaser.Scene {
     }
 
     procesarMensaje(msg) {
+        console.log("procesarMensaje - recibido:", msg.tipoMensaje, "canal:", gameState.canalPartida, "miNombre:", mensaje.nombre);
         switch (msg.tipoMensaje) {
             case tipoMensaje.CARGAR: {   // evaluar si todavia lo necesitamos, equipo viene del menu, probablemente hay que cambiar gamehandler
                 if (mensaje.nombre === msg.nombre) {
@@ -156,7 +163,13 @@ class escena3 extends Phaser.Scene {
                 }
             } break;
             case tipoMensaje.ESTADOPARTIDA: {
+                console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
                 // actualizado de fase de partida
+                gameState.fase = msg.fasePartida.toString();
+                if (msg.fasePartida.toString() === "JUGANDO") {
+                        this.zonaDesp.destroy();
+                        this.botonPasar(this.desplegarBtn);
+                } /*
                 if (gameState.fase !== msg.fasePartida.toString()) {
                     // si pasa a jugando se eliminan los elementos de despliegue iniciales
                     // se podria mostrar mensaje o algo
@@ -167,7 +180,7 @@ class escena3 extends Phaser.Scene {
                     // al pasar a muerte subita se podria hacer algo tambien
                     gameState.fase = msg.fasePartida.toString();
                     alert(msg.fasePartida.toString());
-                }
+                }*/
                 // limpiado de mascara y drones
                 this.forma.clear(); 
                 this.forma.fillStyle(0xff0000, 0);
@@ -192,6 +205,7 @@ class escena3 extends Phaser.Scene {
                 });
             } break;
             case tipoMensaje.GUARDADO: {
+                console.log("GUARDADO - evento:", msg.evento, "destino:", msg.nombre);
                 if (mensaje.nombre === msg.nombre) { // alerta error al jugador afectado
                     switch (msg.evento) {
                         case "SOLICITUD":{
@@ -204,18 +218,21 @@ class escena3 extends Phaser.Scene {
                         }break;
                         case "ACEPTADA":{
                             alert("Solicitud de guardado aceptada");
-                            this.scene.stop('partida');
+                            //this.scene.stop('partida');
+                            this.shutdown();
                             this.scene.start('menu');
                         }break;  
                     }
                 }
             }break;
             case tipoMensaje.ERROR: { 
+                console.log("ERROR - evento:", msg.evento, "destino:", msg.nombre);
                 if (mensaje.nombre === msg.nombre) { // alerta error a jugador
                     alert("err:"+msg.evento);
                 }
             }break;
             case tipoMensaje.NOTIFICACION: { 
+                console.log("NOTIFICACION - evento:", msg.evento, "destino:", msg.nombre);
                 //alert("noti:"+msg.evento);
                 //this.pantallaImpactos.play('impactoPortaA');
                 switch (msg.evento) {
@@ -418,14 +435,14 @@ class escena3 extends Phaser.Scene {
         this.desplegarBtn = this.add.image(pos,960,"Desplegar").setDepth(0).setInteractive();
         pos += tamBtn + sep *1.5;
         var guardarBtn = this.add.image(pos,540,"Guardar").setDepth(0).setInteractive();
-
+        /*
         var actualizarBtn = this.add.image(960,540,"Guardar").setDepth(2).setInteractive();
 
         actualizarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
             gameState.clicks = 0;
-            mensaje.accion = "MOVER";               
+            mensaje.accion = "ACTUALIZAR";               
             this.enviarMensage(mensaje);  
-        });
+        });*/
 
         ///////////////////////////////////////////////////////////////// mover despues
         this.pantallaImpactos = this.add.sprite(pos , 850 ,"Impactos").setScale(1).setDepth(2);
@@ -511,6 +528,7 @@ class escena3 extends Phaser.Scene {
             this.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0, gameState.bordes);
             //this.tablero.getAt((mensaje.xf+(mensaje.yf*gameState.ancho)).toString()).setStrokeStyle(1, gameState.bordes);
             gameState.clicks = 0;
+            mensaje.accion = "DESPLEGAR";
             this.enviarMensage(mensaje);              
         });
     
@@ -575,7 +593,8 @@ class escena3 extends Phaser.Scene {
             gameState.clicks = 0;
             mensaje.accion = "ACEPTAR";               
             this.enviarMensage(mensaje); 
-            this.scene.stop('partida');
+            //this.scene.stop('partida');
+            this.shutdown();
             this.scene.start('menu');
         });
     }
@@ -611,10 +630,63 @@ class escena3 extends Phaser.Scene {
     }
 
     shutdown() {
+        this.eliminarDrones();
+        if (this.tablero)
+            this.tablero.destroy();
+        if (this.forma)
+            this.forma.destroy();
+        if (this.mask)
+            this.mask.destroy();
+        if (this.pantallaImpactos)
+            this.pantallaImpactos.destroy();
+        if (this.fondo)
+            this.fondo.destroy();
+        if (this.escenario)
+            this.escenario.destroy();
+        if (this.desplegarBtn)
+            this.desplegarBtn.destroy();
+        this.anims.remove('idleN');
+        this.anims.remove('idleA');
+        this.anims.remove('impactoPortaA');
+        this.anims.remove('impactoPortaN');
+        this.anims.remove('impactoDronA');
+        this.anims.remove('impactoDronN');
+        this.anims.remove('tiroAguaA');
+        this.anims.remove('tiroAguaN');
+        gameState.colorVerde = 0xaaffaa ;                       //
+        gameState.colorRojo = 0xffaaaa ;                        //
+        gameState.colorSelec = 0x7cff89 ;                        //
+        gameState.niebla = 0x334455 ;
+        gameState.bordes = 0xffffff ;
+        gameState.ancho = 64 ;                                  // cantidad de celdas horizontales
+        gameState.alto = 36 ;                                    // cantidad de celdas verticales
+        gameState.tableroX = 50 ; 
+        gameState.tableroY = 60 ;
+        gameState.miTurno = false ;                   // no se usa
+        gameState.clicks = 0 ;
+        gameState.fase = "" ;
+        gameState.equipo = "" ;
+        gameState.canalPartida = "" ;
+        gameState.drones = [] ;
+        gameState.portaNX = 0 ;
+        gameState.portaNY = 35 ;
+        gameState.portaAX = 63 ;
+        gameState.portaAY = 0 ;
+        gameState.escala = 22.36 ;
+        gameState.tamCelda = 23 ;
+        gameState.solicitandoGuardado = false ;
+        mensaje.nombre = "" ;
+        mensaje.accion = "" ;
+        mensaje.xi = 30 ;
+        mensaje.yi = 15 ;
+        mensaje.xf = 30 ;
+        mensaje.yf = 15 ;
+        //this.scene.remove('partida');
         window.conexionWS.desuscribir('/topic/accion');
-        if (this.canalPartida) {
-            window.conexionWS.desuscribir(this.canalPartida);
+        if (gameState.canalPartida) {
+            window.conexionWS.desuscribir(gameState.canalPartida);
         }
+        this.scene.stop('partida');
     }
     
     update() {

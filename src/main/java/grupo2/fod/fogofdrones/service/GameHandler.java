@@ -76,24 +76,35 @@ public class GameHandler {
 			switch (accion) {
 				case "GUARDAR": {
 					System.out.println("case GUARDAR");
-					handleGuardar(nombre, p);
+					if (p != null) {
+						handleGuardar(nombre, p);
+					}
 					} break;
 				case "RECHAZAR": {
 					System.out.println("case RECHAZAR");
-					handleRechazar(nombre, p);
+					if (p != null) {
+						handleRechazar(nombre, p);
+					}
 				 	} break;
 				case "ACEPTAR":{
 					System.out.println("case ACEPTAR");
-					handleAceptar(nombre, p);
+					if (p != null) {
+						handleAceptar(nombre, p);
+					}
 					} break;
 				case "ACTUALIZAR": {
 					System.out.println("case ACTUALIZAR");
-					String respuesta = mensajeRetorno(p);
-					String canal = getCanalPartida(p);
-					messagingTemplate.convertAndSend(canal, respuesta);
+					if (p != null) {
+						String respuesta = mensajeRetorno(p);
+						String canal = getCanalPartida(p);
+						messagingTemplate.convertAndSend(canal, respuesta);
+						LOGGER.info("Estado actualizado enviado para jugador '{}'", nombre);
+					} else {
+						LOGGER.warn("ACTUALIZAR: No se encontró partida para jugador '{}'", nombre);
+					}
 					} break;
 				default: 
-					if (p.esMiTurno(nombre)) {
+					if (p != null && p.esMiTurno(nombre)) {
 						// Si es el turno del jugador, procesar la acción
 						if (p.getFasePartida() == FasePartida.DESPLIEGUE) {
 							handleDesplegar(data, p);
@@ -412,7 +423,13 @@ public class GameHandler {
 				.grilla(p.getTablero().getGrillaLineal())
 				.build(); //new VoMensaje(p.getFasePartida(), p.getTablero());
 			t = mapper.writeValueAsString(mensaje);
+			
+			// DEBUG: Verificar qué se está enviando
+			LOGGER.info("[DEBUG MSG] Enviando estado - Fase: {}, Grilla tamaño:", 
+				p.getFasePartida()
+				);//p.getTablero().getGrillaLineal().size()
 		} catch (Exception e) {
+			LOGGER.error("[DEBUG MSG] Error generando mensaje de retorno", e);
 			e.printStackTrace();
 		}
 		return t;
@@ -470,13 +487,30 @@ public class GameHandler {
 
 				// Recupera la partida guardada
 				Partida partidaCargada = servicios.cargarPartida(jugadorCarga1, jugadorCarga2);
+				
+
+				if (partidaCargada == null) {
+					LOGGER.error("ERROR: No se pudo cargar la partida para {} y {}", jugadorCarga1, jugadorCarga2);
+					enviarErrorLogin(nombre, "Error al cargar la partida");
+					jugadorCarga1 = null;
+					jugadorCarga2 = null;
+					return;
+				}
+
+				partidaCargada.actualizarTablero();
+				partidaCargada.actualizarVision();
+				
 				String canalPartida = getCanalPartida(partidaCargada);
 
-
+				// DEBUG: Verificar el estado de la partida cargada
+				LOGGER.info("[DEBUG CARGA] Partida cargada - Fase: {}, Drones N: {}, Drones A: {}", 
+					partidaCargada.getFasePartida(),
+					partidaCargada.cantDronesEquipo(Equipo.NAVAL),
+					partidaCargada.cantDronesEquipo(Equipo.AEREO));
 
 				// Notifica a ambos jugadores que la partida está lista para cargar
 				VoMensaje mensajeJugador1 = VoMensaje.builder()
-					.nombre(jugadorCarga1)
+					.nombre(partidaCargada.getJugadorNaval().getNombre())
 					.equipo(Equipo.NAVAL)
 					.canal(canalPartida)
 					.build();
@@ -484,7 +518,7 @@ public class GameHandler {
 				messagingTemplate.convertAndSend("/topic/cargar-lista", respuestaJugador1);
 
 				VoMensaje mensajeJugador2 = VoMensaje.builder()
-					.nombre(jugadorCarga2)
+					.nombre(partidaCargada.getJugadorAereo().getNombre())
 					.equipo(Equipo.AEREO)
 					.canal(canalPartida)
 					.build();
@@ -494,14 +528,14 @@ public class GameHandler {
 				// Limpia estado de espera
 				jugadorCarga1 = null;
 				jugadorCarga2 = null;
-////////////////////////////////////////////////////////////////////////////////////////
+
 				System.out.println(partidaCargada.getJugadorNaval().getNombre() + " - " + partidaCargada.getJugadorAereo().getNombre());
 
-				// Enviar estado actual de la partida cargada
-				if (partidaCargada != null) {
-					String estadoInicial = mensajeRetorno(partidaCargada);
-					messagingTemplate.convertAndSend(canalPartida, estadoInicial);
-				}
+				// Nota: El estado inicial será enviado cuando los clientes se suscriban 
+				// y envíen un mensaje ACTUALIZAR. Esto sincroniza correctamente a ambos jugadores.
+				LOGGER.info("Partida cargada: {} vs {}. Esperando ACTUALIZAR de los clientes.", 
+					partidaCargada.getJugadorNaval().getNombre(), 
+					partidaCargada.getJugadorAereo().getNombre());
 			} else {
 				enviarErrorLogin(nombre, "No se pudo cargar la partida. Intenta nuevamente.");
 				LOGGER.warn("Carga no asignada para '{}'. Estado actual jugadorCarga1='{}', jugadorCarga2='{}'", nombre, jugadorCarga1, jugadorCarga2);

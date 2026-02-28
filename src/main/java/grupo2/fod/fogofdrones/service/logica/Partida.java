@@ -524,6 +524,10 @@ public class Partida implements Serializable {
         return fase;
     }
 
+    public void setFasePartida(FasePartida nuevaFase) {
+        this.fase = nuevaFase;
+    }
+
     public Equipo getTurno() {
         return turno;
     }
@@ -557,17 +561,21 @@ public class Partida implements Serializable {
         tablero.resetearVision();
     
         for (Dron dron : dronesNavales) {
-            tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.NAVAL);
+            //tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.NAVAL);
+            tablero.marcarVision(dron.getPosicion(), 3, Equipo.NAVAL);
         }
         
         for (Dron dron : dronesAereos) {
-            tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.AEREO);
+            //tablero.marcarVision(dron.getPosicion(), dron.getVision(), Equipo.AEREO);
+            tablero.marcarVision(dron.getPosicion(), 6, Equipo.AEREO);
         }
         
         Posicion posPortaNaval = new Posicion(portaDronesNaval.getPosicion().getX()+1, portaDronesNaval.getPosicion().getY()-1);
         Posicion posPortaAereo = new Posicion(portaDronesAereo.getPosicion().getX()-1, portaDronesAereo.getPosicion().getY()+1);
-        tablero.marcarVision(posPortaNaval, portaDronesAereo.getVision(), Equipo.NAVAL);
-        tablero.marcarVision(posPortaAereo, portaDronesAereo.getVision(), Equipo.AEREO);
+        //tablero.marcarVision(posPortaNaval, portaDronesAereo.getVision(), Equipo.NAVAL);
+        //tablero.marcarVision(posPortaAereo, portaDronesAereo.getVision(), Equipo.AEREO);
+        tablero.marcarVision(posPortaNaval, 6, Equipo.NAVAL);
+        tablero.marcarVision(posPortaAereo, 6, Equipo.AEREO);
 
     }
 
