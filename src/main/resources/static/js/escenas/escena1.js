@@ -153,10 +153,10 @@ class escena1 extends Phaser.Scene {
             });
             window.conexionWS.suscribir('/topic/ranking', (msg) => {
                 if (!Array.isArray(msg) || msg.length === 0) {
-                    if (this.rankingDiv) {
-                        this.rankingDiv.textContent = 'Sin datos de jugadores';
+                    if (this.rankingDiv && this.rankingDiv.node) {
+                        this.rankingDiv.node.textContent = 'Sin datos de jugadores';
                     }
-                        return;
+                    return;
                 }
 
                 // Cabecera y filas con columnas alineadas, pero más compactas
@@ -176,8 +176,8 @@ class escena1 extends Phaser.Scene {
                     lineas.push(colIndex + nombre + puntos + vict);
                 });
 
-                if (this.rankingDiv) {
-                    this.rankingDiv.textContent = lineas.join('\n');
+                if (this.rankingDiv && this.rankingDiv.node) {
+                    this.rankingDiv.node.textContent = lineas.join('\n');
                 }
             });
             window.conexionWS.enviar('/app/ranking', { });
@@ -269,7 +269,84 @@ class escena1 extends Phaser.Scene {
 
         this.domElements = [this.nombreInput];
     }
-    
+    /*
+    crearUIRanking() {
+    const { width, height } = this.cameras.main;
+    const panelX = width - 360;
+    const panelY = 60;
+
+    // dibujo del panel como antes…
+    const panel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
+        .setStrokeStyle(3, 0x5a7f3a, 1);
+    this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
+        fontSize: '24px',
+        fontFamily: 'Cambria, "Times New Roman", serif',
+        color: '#d7ffb2',
+        fontStyle: 'bold'
+    }).setOrigin(0, 0);
+
+    // DOMElement en lugar de crear un <pre> “a mano”
+    this.rankingDiv = this.add.dom(panelX + 16, panelY + 32, 'pre', {
+        width: '260px',
+        maxHeight: '210px',
+        fontFamily: 'Courier New, monospace',
+        fontSize: '16px',
+        color: '#f0f7e0',
+        overflowY: 'auto',
+        whiteSpace: 'pre'
+    }, 'Cargando ranking…');
+    this.rankingDiv.setOrigin(0, 0);
+
+
+    resizeRanking(gameSize) {          // el listener recibe el nuevo tamaño
+        const { width } = gameSize || this.cameras.main;
+        const panelX = width - 360;
+
+        // reposicionamos el DOMElement y el título; el rectángulo no suele necesitarlo
+        if (this.rankingDiv) {
+            this.rankingDiv.setPosition(panelX + 16, 60 + 32);
+        }
+        if (this.rankingTitulo) {
+            this.rankingTitulo.setPosition(panelX + 16, 60 - 10);
+        }
+    }
+
+    crearUIRanking() {
+        const { width, height } = this.cameras.main;
+        const panelX = width - 360;
+        const panelY = 60;
+        
+        // Panel de fondo tipo consola militar
+        const panel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
+            .setStrokeStyle(3, 0x5a7f3a, 1);
+
+        this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
+            fontSize: '24px',
+            fontFamily: 'Cambria, "Times New Roman", serif',
+            color: '#d7ffb2',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0);
+
+        // crear un DOMElement en lugar de un <pre> flotante
+        this.rankingDiv = this.add.dom(panelX + 16, panelY + 32, 'pre', {
+            width: '260px',
+            maxHeight: '210px',
+            fontFamily: 'Courier New, monospace',
+            fontSize: '16px',
+            color: '#f0f7e0',
+            overflowY: 'auto',
+            whiteSpace: 'pre',
+            margin: '0',
+            padding: '4px 8px',
+            background: 'transparent',
+            border: 'none'
+        }, 'Cargando ranking...');
+        this.rankingDiv.setOrigin(0, 0);
+
+        // registrar resize para que el panel se mantenga en su sitio
+        this.scale.on('resize', this.resizeRanking, this);
+    }
+    /*
     crearUIRanking() {
         const { width } = this.cameras.main;
         const panelX = width - 360; // desplazado hacia la izquierda
@@ -289,7 +366,9 @@ class escena1 extends Phaser.Scene {
         // Contenedor HTML con scroll para el listado del ranking
         this.rankingDiv = document.createElement('pre');
         this.rankingDiv.id = 'rankingJugadores';
-        this.rankingDiv.textContent = 'Cargando ranking...';
+        if (this.rankingDiv && this.rankingDiv.node) {
+            this.rankingDiv.node.textContent = 'Cargando ranking...';
+        }
         this.rankingDiv.style.cssText = `
             position: absolute;
             right: 112px;
@@ -315,7 +394,7 @@ class escena1 extends Phaser.Scene {
         this.domElements.push(this.rankingDiv);
 
         //this.cargarRanking();
-    }
+    }*/
     /*
     cargarRanking() {
         window.conexionWS.suscribir('/topic/ranking', (msg) => {
@@ -359,7 +438,9 @@ class escena1 extends Phaser.Scene {
             .then(data => {
                 if (!Array.isArray(data) || data.length === 0) {
                     if (this.rankingDiv) {
-                        this.rankingDiv.textContent = 'Sin datos de jugadores';
+                        if (this.rankingDiv && this.rankingDiv.node) {
+                            this.rankingDiv.node.textContent = 'Sin datos de jugadores';
+                        }
                     }
                     return;
                 }
@@ -387,7 +468,9 @@ class escena1 extends Phaser.Scene {
             })
             .catch(() => {
                 if (this.rankingDiv) {
-                    this.rankingDiv.textContent = 'No se pudo cargar el ranking';
+                    if (this.rankingDiv && this.rankingDiv.node) {
+                        this.rankingDiv.node.textContent = 'No se pudo cargar el ranking';
+                    }
                 }
             });*/
     //}
