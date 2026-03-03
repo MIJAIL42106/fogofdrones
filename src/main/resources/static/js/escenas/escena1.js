@@ -20,6 +20,10 @@ class escena1 extends Phaser.Scene {
 
     create() { 
         const { width, height } = this.cameras.main;
+
+        // Limpieza defensiva: si quedó un input de nombre de una sesión anterior,
+        // eliminarlo antes de crear uno nuevo.
+        this.eliminarInputsNombreGlobal();
         
         //this.cameras.main.setBackgroundColor('#FF0000'); // Rojo
         //this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0.5)'); // Transparente
@@ -29,6 +33,7 @@ class escena1 extends Phaser.Scene {
         this.awaitingLoginResponse = false;
         this.startedPartida = false;
         this.buscandoPartida = false;
+        this.cargandoPartida = false;
         
         this.crearNombreInput();
 
@@ -294,15 +299,9 @@ class escena1 extends Phaser.Scene {
         gameState.equipo = (equipo || '').toString();
         this.canalPartida = canal;
 
-        if (this.domElements) {
-            this.domElements.forEach(element => {
-                if (element && element.parentNode) {
-                    element.parentNode.removeChild(element);
-                }
-            });
-        }
+        this.eliminarDomElements();
+        this.eliminarInputsNombreGlobal();
 
-        //this.scene.stop('menu');
         this.shutdown();
         this.scene.start('partida', { nombre, equipo: gameState.equipo, canal: this.canalPartida });
     }
@@ -317,6 +316,9 @@ class escena1 extends Phaser.Scene {
     // inputs HTML
     crearNombreInput() {
         const { width, height } = this.cameras.main;
+
+        // Evitar inputs duplicados si la escena se reinicia sin limpiar bien
+        this.eliminarInputsNombreGlobal();
 
         // input grande y centrado estilo militar
         this.nombreInput = document.createElement('input');
@@ -346,6 +348,28 @@ class escena1 extends Phaser.Scene {
         document.body.appendChild(this.nombreInput);
 
         this.domElements = [this.nombreInput];
+    }
+
+    eliminarDomElements() {
+        if (!this.domElements) {
+            return;
+        }
+        this.domElements.forEach(element => {
+            if (element && element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+        this.domElements = null;
+    }
+
+    eliminarInputsNombreGlobal() {
+        // En teoría solo hay uno, pero removemos todos por seguridad.
+        const inputs = document.querySelectorAll('input#nombre');
+        inputs.forEach(el => {
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        });
     }
 
     mostrarMensajeError(texto) {
@@ -399,14 +423,9 @@ class escena1 extends Phaser.Scene {
             window.conexionWS.desuscribir(this.canalPartida);
         }
         window.conexionWS.desconectar();
-        
-        if (this.domElements) {
-            this.domElements.forEach(element => {
-                if (element && element.parentNode) {
-                    element.parentNode.removeChild(element);
-                }
-            });
-        } 
+
+        this.eliminarDomElements();
+        this.eliminarInputsNombreGlobal();
         this.scene.stop('menu');  
     }
 }
