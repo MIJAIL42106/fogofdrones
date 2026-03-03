@@ -35,7 +35,7 @@ const mensaje = {
 };
 
 const tipoMensaje = Object.freeze({ // una forma de hacer tipo enumerado en js
-    CARGAR: 0,  // no se usa 
+    MUNICION: 0,  // no se usa 
     ESTADOPARTIDA: 1,
     GUARDADO: 2,
     ERROR: 3,
@@ -46,13 +46,16 @@ const tipoMensaje = Object.freeze({ // una forma de hacer tipo enumerado en js
 // podria eliminarse clase celda completamente y usar un metodo?
 class Celda {                                   // calse celda para grilla
     constructor (grid, y, x) {                  // grid = escena donde se crean, indices para posiciones x e y
-        gameState.escala = 22.36;                       // escala de posiciones ////////////////////////////////////////// borrar
+        gameState.escala = 22.36;                       // escala de posiciones //////////////////////////////////////////////////////////////////////// borrar
+
+        let municion = "-/-";
                                                 // añade rectangulo en posicion correspondiente a indices
         this.tile = grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes).setDepth(1);
         this.tile.setAlpha(0.3);                // ajuste de opacidad para celdas de grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
         this.tile.on('pointerdown', () => {     // asigna interaccion al clikear
+            //grid.textoMunicion.setText("-/-");
             if (gameState.fase === "DESPLIEGUE") {
                 grid.tablero.getAt((mensaje.xi+(mensaje.yi*gameState.ancho)).toString()).setStrokeStyle(0.0, gameState.bordes);
                 mensaje.xi = x;
@@ -68,6 +71,7 @@ class Celda {                                   // calse celda para grilla
                     mensaje.yi = y;
                     mensaje.xf = x;
                     mensaje.yf = y;
+
                     this.tile.setStrokeStyle(3, gameState.colorSelec);
                 } else if ( gameState.clicks === 1 ) {
                     gameState.clicks ++;
@@ -124,7 +128,7 @@ class escena3 extends Phaser.Scene {
     }
 
     create() {
-        alert(gameState.equipo + " - " + mensaje.nombre);
+        //alert(gameState.equipo + " - " + mensaje.nombre);
         this.crearInterfaz();
         this.crearAnimaciones();
         //this.pantallaImpactos.play('impactoPortaA');
@@ -161,10 +165,14 @@ class escena3 extends Phaser.Scene {
     procesarMensaje(msg) {
         console.log("procesarMensaje - recibido:", msg.tipoMensaje, "canal:", gameState.canalPartida, "miNombre:", mensaje.nombre);
         switch (msg.tipoMensaje) {
-            case tipoMensaje.CARGAR: {   // evaluar si todavia lo necesitamos, equipo viene del menu, probablemente hay que cambiar gamehandler
+            case tipoMensaje.MUNICION: { 
+                if (mensaje.nombre === msg.nombre) {
+                    this.textoMunicion.setText(msg.evento);
+                } 
+                /*
                 if (mensaje.nombre === msg.nombre) {
                     gameState.equipo = msg.equipo.toString();
-                }
+                }*/
             } break;
             case tipoMensaje.ESTADOPARTIDA: {
                 console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
@@ -218,12 +226,14 @@ class escena3 extends Phaser.Scene {
                             this.solicitarGuardado();
                         }break;
                         case "RECHAZADA":{
-                            alert("Solicitud de guardado rechazada");
+                            this.mostrarMensajeEvento("Solicitud de guardado rechazada");
+                            //alert("Solicitud de guardado rechazada");
                             gameState.solicitandoGuardado = false;
                             this.oscurecer.destroy();
                         }break;
                         case "ACEPTADA":{
-                            alert("Solicitud de guardado aceptada");
+                            this.mostrarMensajeEvento("Solicitud de guardado aceptada");
+                            //alert("Solicitud de guardado aceptada");
                             //this.scene.stop('partida');
                             this.shutdown();
                             this.scene.start('menu');
@@ -234,7 +244,8 @@ class escena3 extends Phaser.Scene {
             case tipoMensaje.ERROR: { 
                 console.log("ERROR - evento:", msg.evento, "destino:", msg.nombre);
                 if (mensaje.nombre === msg.nombre) { // alerta error a jugador
-                    alert("err:"+msg.evento);
+                    this.mostrarMensajeError(msg.evento);
+                    //alert("err:"+msg.evento);
                 }
             }break;
             case tipoMensaje.NOTIFICACION: { 
@@ -268,8 +279,8 @@ class escena3 extends Phaser.Scene {
                     }break;
                     default:{
                         if (mensaje.nombre === msg.nombre) { // notifica a jugador
-
-                            alert("noti:"+msg.evento);
+                            this.mostrarMensajeEvento(msg.evento);
+                            //alert("noti:"+msg.evento);
                         }
                     }break;
                 }
@@ -279,9 +290,17 @@ class escena3 extends Phaser.Scene {
                 // Mostrar cartel de finalización y ganador
                 let ganador = msg.nombre;
                 let mensajeFin = msg.evento + "\nGanador: " + ganador;
-                alert(mensajeFin);
+                this.mostrarMensajeEvento(mensajeFin);
+                
+                //alert(mensajeFin);
                 // Al aceptar, salir de la partida y volver al menú
                 //this.scene.stop('partida');
+                /*
+                setTimeout(() => {
+                    this.shutdown();
+                    this.scene.start('menu');
+                }, 4000); 
+                */
                 this.shutdown();
                 this.scene.start('menu');
                 // Desconectar websocket si es necesario
@@ -364,7 +383,7 @@ class escena3 extends Phaser.Scene {
         
         //animaciones pantalla secundaria
     }
-    
+
     crearPortadrones() {
         var posX = (gameState.portaNX + (gameState.anchoPorta / 2))* gameState.escala - (gameState.escala* 0.5) + gameState.tableroX;
         var posY = (gameState.portaNY - (gameState.altoPorta / 2))* gameState.escala + (gameState.escala * 0.5) + gameState.tableroY;
@@ -445,6 +464,11 @@ class escena3 extends Phaser.Scene {
             this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+gameState.tamCelda / 2, gameState.tableroY-gameState.tamCelda / 2, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
         }
         this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.2).setDepth(1); 
+
+        this.textoAlertas = this.add.text(960, -30, " ", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5).setDepth(3);
+        this.textoAlertas.setAlpha(0);
+
+        this.textoMunicion = this.add.text(1800, 450, "-/-", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5).setDepth(1);
         
         const tamBtn = 333 ;
         const sep = 35 ;
@@ -622,12 +646,72 @@ class escena3 extends Phaser.Scene {
         });
     }
 
+    mostrarMensajeError(texto) {
+        this.textoAlertas.setText("  "+texto+"  ");
+        //this.textoAlertas = this.add.text(960, -30, "  "+texto+"  ", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5);
+        //this.textoAlertas.setAlpha(0);
+        this.textoAlertas.setBackgroundColor('#ff00007f');
+
+        this.cadena1 = this.tweens.chain({
+            targets: this.textoAlertas,
+            tweens: [
+                {
+                    y: 50 ,
+                    alpha: 1,
+                    ease: 'Power3' ,
+                    duration: 500
+                },{
+                    y: -50 ,
+                    alpha: 0,
+                    ease: 'Power2' ,
+                    duration: 500 ,
+                    delay: 1000
+                }
+            ]
+        });
+    }
+
+    mostrarMensajeEvento(texto) {
+        this.textoAlertas.setText("  "+texto+"  ");
+        //this.textoAlertas = this.add.text(960, -30, "  "+texto+"  ", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5);
+        //this.textoAlertas.setAlpha(0);
+        this.textoAlertas.setBackgroundColor('#000dff7f');
+
+        this.cadena2 = this.tweens.chain({
+            targets: this.textoAlertas,
+            tweens: [
+                {
+                    y: 50 ,
+                    alpha: 1,
+                    ease: 'Power3' ,
+                    duration: 500
+                },{
+                    y: -50 ,
+                    alpha: 0,
+                    ease: 'Power2' ,
+                    duration: 500 ,
+                    delay: 1000
+                }
+            ]
+        });
+    }
+
     dibujarDronNaval (x, y) {
         var xAbs = x + gameState.tableroX;
         var yAbs = y + gameState.tableroY;
         let dron = this.add.sprite(xAbs - 1, yAbs ,"DronN").setScale(1.5).setDepth(2);
         dron.angle = -90;
+        
+        dron.setInteractive(); 
+        dron.on('pointerdown', () => {
+            if(gameState.equipo === "NAVAL") {
+                mensaje.accion = "MUNICION";               
+                this.enviarMensage(mensaje); 
+            }
+        });
+        
         dron.play('idleN');
+        
         gameState.drones.push(dron);
     }
 
@@ -636,6 +720,15 @@ class escena3 extends Phaser.Scene {
         var yAbs = y + gameState.tableroY;
         let dron = this.add.sprite(xAbs + 1, yAbs ,"DronA").setScale(1.5).setDepth(2);
         dron.angle = 90;
+
+        dron.setInteractive(); 
+        dron.on('pointerdown', () => {
+            if(gameState.equipo === "AEREO") {
+                mensaje.accion = "MUNICION";               
+                this.enviarMensage(mensaje); 
+            }
+        });
+
         dron.play('idleA');
         gameState.drones.push(dron);
     }
@@ -680,6 +773,10 @@ class escena3 extends Phaser.Scene {
         this.anims.remove('impactoDronN');
         this.anims.remove('tiroAguaA');
         this.anims.remove('tiroAguaN');
+        //this.tweens.removeAll();
+        //this.tweens.killAll();
+        this.cadena1.destroy();
+        this.cadena2.destroy();
         gameState.colorVerde = 0xaaffaa ;                       //
         gameState.colorRojo = 0xffaaaa ;                        //
         gameState.colorSelec = 0x7cff89 ;                        //

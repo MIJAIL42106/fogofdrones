@@ -103,6 +103,12 @@ public class GameHandler {
 						LOGGER.warn("ACTUALIZAR: No se encontró partida para jugador '{}'", nombre);
 					}
 					} break;
+				case "MUNICION":{
+					System.out.println("case MUNICION");
+					if (p != null) {
+						handleMunicion(data, nombre, p);
+					}
+					} break;
 				default: 
 					if (p != null && p.esMiTurno(nombre)) {
 						// Si es el turno del jugador, procesar la acción
@@ -300,13 +306,47 @@ public class GameHandler {
 
 	
 	//Maneja la recarga de munición
-	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// revisar xi yi o xf yf y ver que mas cambia
 	public void handleRecargar(Map<String, Object> data, Partida p) {
-		int x = (int) data.get("xi");
-		int y = (int) data.get("yi");
+		int x = (int) data.get("xf");
+		int y = (int) data.get("yf");
 		Posicion pos = new Posicion(x, y);
 		
 		p.recargarMunicion(pos);
+	}
+
+	// pasamos nombre que ya lo tenemos de antes asi no tenemos que guardarlo nuevamente
+	public void handleMunicion(Map<String, Object> data, String nombre, Partida p) {
+		System.out.println("municion");
+		int x = (int) data.get("xf");
+		int y = (int) data.get("yf");
+		Posicion pos = new Posicion(x, y);
+		Equipo equipo = null;
+		int muniTotal = 0;
+		if (nombre.equals(p.getJugadorAereo())){
+			equipo = Equipo.AEREO;
+			muniTotal = 1;
+		} else {
+			equipo = Equipo.NAVAL;
+			muniTotal = 2;
+		}
+		//System.out.println(nombre +" - "+equipo+" - "+muniTotal);
+		int municion = p.obtenerMunicion(pos, equipo);
+		//System.out.println( municion + "/" + muniTotal);
+
+		try {
+			VoMensaje mensajeMunicion = VoMensaje.builder()
+				.tipoMensaje(0)
+				.nombre(nombre)
+				.evento( municion + "/" + muniTotal)//String.valueOf(municion))	
+				.build(); 
+			String respuesta = mapper.writeValueAsString(mensajeMunicion);
+			String canal = getCanalPartida(p);
+			messagingTemplate.convertAndSend(canal, respuesta);
+		} catch (Exception e) {
+
+		}
 	}
 
 	public void handleGuardar(String solicitante, Partida p) {

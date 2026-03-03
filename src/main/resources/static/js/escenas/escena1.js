@@ -60,10 +60,9 @@ class escena1 extends Phaser.Scene {
             color: '#f0f7e0'
         }).setOrigin(0.5);
 
-        this.conectarSTOMP();
-
-        // Crear y cargar ranking
+        // Crear y cargar ranking antes de suscribirse, así no perdemos el primer mensaje
         this.crearUIRanking();
+        this.conectarSTOMP();
 
         this.jugarBtn.on('pointerdown', () => {
             if (this.buscandoPartida) {
@@ -72,7 +71,8 @@ class escena1 extends Phaser.Scene {
             }
             mensajeLogin.nombre = this.nombreInput.value.trim();
             if (!mensajeLogin.nombre) {
-                alert('falta nombre');
+                this.mostrarMensajeError('Falta Nombre');
+                //alert('falta nombre');
                 return;
             }
             this.buscandoPartida = true;
@@ -91,7 +91,8 @@ class escena1 extends Phaser.Scene {
             }
             mensajeLogin.nombre = this.nombreInput.value.trim();
             if (!mensajeLogin.nombre) {
-                alert('falta nombre');
+                this.mostrarMensajeError("Falta Nombre");
+                //alert('falta nombre');
                 return;
             }
             this.cargandoPartida = true;
@@ -101,6 +102,8 @@ class escena1 extends Phaser.Scene {
             this.estadoTexto.setText('Esperando al rival...');
             window.conexionWS.enviar('/app/cargar', { nombre: mensajeLogin.nombre });
         });
+
+        this.mostrarMensajeError("hola");
     }
 
     // Centraliza la conexión y suscripción a los tópicos usando ConexionWS
@@ -114,7 +117,8 @@ class escena1 extends Phaser.Scene {
                 if (msg && msg.tipoMensaje === 3 && mismoJugador) {
                     // Si el error es por cargar partida guardada
                     if (msg.evento && msg.evento.includes('No tienes partida guardada')) {
-                        alert('No tienes partida guardada');
+                        this.mostrarMensajeError(msg.evento);
+                        //alert('No tienes partida guardada');
                         this.cancelarCarga();
                         return;//////////////////////////////////////////// reeturn peruano
                     }
@@ -127,7 +131,8 @@ class escena1 extends Phaser.Scene {
                     this.jugarBtn.setText('BUSCAR PARTIDA');
                     this.jugarBtn.setBackgroundColor('#66bb6a'); // verde claro por defecto
                     this.estadoTexto.setText('');*/
-                    alert(msg.error || 'No se pudo iniciar sesión');
+                    this.mostrarMensajeError(msg.evento);
+                    //alert(msg.error || 'No se pudo iniciar sesión');
                     return;
                 }
             });
@@ -151,10 +156,11 @@ class escena1 extends Phaser.Scene {
                     this.iniciarPartida(mensajeLogin.nombre, msg.equipo, this.canalPartida);
                 }
             });
+            // Suscripción para ranking
             window.conexionWS.suscribir('/topic/ranking', (msg) => {
                 if (!Array.isArray(msg) || msg.length === 0) {
-                    if (this.rankingDiv && this.rankingDiv.node) {
-                        this.rankingDiv.node.textContent = 'Sin datos de jugadores';
+                    if (this.rankingText) {
+                        this.rankingText.setText('Sin datos de jugadores');
                     }
                     return;
                 }
@@ -176,14 +182,72 @@ class escena1 extends Phaser.Scene {
                     lineas.push(colIndex + nombre + puntos + vict);
                 });
 
-                if (this.rankingDiv && this.rankingDiv.node) {
-                    this.rankingDiv.node.textContent = lineas.join('\n');
+                if (this.rankingText) {
+                    // encabezado + filas
+                    //const header = '#  Nombre       Pts  Vi';
+                    this.rankingText.setText(lineas);
+                    //this.rankingText.setText([header].concat(lineas).join('\n'));
                 }
             });
             window.conexionWS.enviar('/app/ranking', { });
         }, (error) => {
             this.estadoTexto.setText('Error de conexión');
         });
+    }
+/*
+    resizeRanking(gameSize) {
+        // gameSize es el objeto {width,height} que envía scale.on('resize')
+        const size = gameSize || this.scale.gameSize || this.cameras.main;
+        const width = size.width;
+        const height = size.height;
+        const panelX = width - 360;
+        const panelY = 60;
+
+        // reposicionamos el panel y los elementos
+        if (this._rankingPanel) {
+            this._rankingPanel.setPosition(panelX + 160, panelY + 160);
+        }
+        if (this.rankingTitulo) {
+            this.rankingTitulo.setPosition(panelX + 16, panelY - 10);
+        }
+        if (this.rankingText) {
+            this.rankingText.setPosition(panelX + 16, panelY + 32);
+            // ajustar word wrap width si cambia el ancho disponible
+            const newWidth = Math.min(300, Math.max(120, width - panelX - 40));
+            this.rankingText.setWordWrapWidth(newWidth);
+        }
+    }
+*/
+    crearUIRanking() {
+        const { width, height } = this.cameras.main;
+        const panelX = width - 360;
+        const panelY = 60;
+        
+        // Panel de fondo tipo consola militar
+        this._rankingPanel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
+            .setStrokeStyle(3, 0x5a7f3a, 1);
+
+        this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
+            fontSize: '24px',
+            fontFamily: 'Cambria, "Times New Roman", serif',
+            color: '#d7ffb2',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0);
+
+        // crear un texto simple para el ranking (monoespaciado)
+        const textStyle = {
+            fontFamily: 'Courier, monospace',
+            fontSize: '20px',
+            color: '#f0f7e0',
+            align: 'left',
+            wordWrap: { width: 320 }
+        };
+        this.rankingText = this.add.text(panelX + 16, panelY + 32, 'Cargando ranking...', textStyle)
+            .setOrigin(0, 0);
+
+        // registrar resize y aplicar posición inicial
+        //this.scale.on('resize', this.resizeRanking, this);
+        //this.resizeRanking(this.scale.gameSize);
     }
 
     cancelarBusqueda() {
@@ -225,7 +289,8 @@ class escena1 extends Phaser.Scene {
             });
         }
 
-        this.scene.stop('menu');
+        //this.scene.stop('menu');
+        this.shutdown();
         this.scene.start('partida', { nombre, equipo: gameState.equipo, canal: this.canalPartida });
     }
 
@@ -269,215 +334,51 @@ class escena1 extends Phaser.Scene {
 
         this.domElements = [this.nombreInput];
     }
-    /*
-    crearUIRanking() {
-    const { width, height } = this.cameras.main;
-    const panelX = width - 360;
-    const panelY = 60;
 
-    // dibujo del panel como antes…
-    const panel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
-        .setStrokeStyle(3, 0x5a7f3a, 1);
-    this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
-        fontSize: '24px',
-        fontFamily: 'Cambria, "Times New Roman", serif',
-        color: '#d7ffb2',
-        fontStyle: 'bold'
-    }).setOrigin(0, 0);
+    mostrarMensajeError(texto) {
+        this.text = this.add.text(960, -30, "  "+texto+"  ", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5);
+        this.text.setAlpha(0);
+        this.text.setBackgroundColor('#ff00007f');
 
-    // DOMElement en lugar de crear un <pre> “a mano”
-    this.rankingDiv = this.add.dom(panelX + 16, panelY + 32, 'pre', {
-        width: '260px',
-        maxHeight: '210px',
-        fontFamily: 'Courier New, monospace',
-        fontSize: '16px',
-        color: '#f0f7e0',
-        overflowY: 'auto',
-        whiteSpace: 'pre'
-    }, 'Cargando ranking…');
-    this.rankingDiv.setOrigin(0, 0);
-
-
-    resizeRanking(gameSize) {          // el listener recibe el nuevo tamaño
-        const { width } = gameSize || this.cameras.main;
-        const panelX = width - 360;
-
-        // reposicionamos el DOMElement y el título; el rectángulo no suele necesitarlo
-        if (this.rankingDiv) {
-            this.rankingDiv.setPosition(panelX + 16, 60 + 32);
-        }
-        if (this.rankingTitulo) {
-            this.rankingTitulo.setPosition(panelX + 16, 60 - 10);
-        }
-    }
-
-    crearUIRanking() {
-        const { width, height } = this.cameras.main;
-        const panelX = width - 360;
-        const panelY = 60;
-        
-        // Panel de fondo tipo consola militar
-        const panel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
-            .setStrokeStyle(3, 0x5a7f3a, 1);
-
-        this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
-            fontSize: '24px',
-            fontFamily: 'Cambria, "Times New Roman", serif',
-            color: '#d7ffb2',
-            fontStyle: 'bold'
-        }).setOrigin(0, 0);
-
-        // crear un DOMElement en lugar de un <pre> flotante
-        this.rankingDiv = this.add.dom(panelX + 16, panelY + 32, 'pre', {
-            width: '260px',
-            maxHeight: '210px',
-            fontFamily: 'Courier New, monospace',
-            fontSize: '16px',
-            color: '#f0f7e0',
-            overflowY: 'auto',
-            whiteSpace: 'pre',
-            margin: '0',
-            padding: '4px 8px',
-            background: 'transparent',
-            border: 'none'
-        }, 'Cargando ranking...');
-        this.rankingDiv.setOrigin(0, 0);
-
-        // registrar resize para que el panel se mantenga en su sitio
-        this.scale.on('resize', this.resizeRanking, this);
-    }
-    /*
-    crearUIRanking() {
-        const { width } = this.cameras.main;
-        const panelX = width - 360; // desplazado hacia la izquierda
-        const panelY = 60;
-
-        // Panel de fondo tipo consola militar
-        const panel = this.add.rectangle(panelX + 160, panelY + 160, 320, 260, 0x0b1a0b, 0.85)
-            .setStrokeStyle(3, 0x5a7f3a, 1);
-
-        this.rankingTitulo = this.add.text(panelX + 16, panelY - 10, 'RANKING DE JUGADORES', {
-            fontSize: '24px',
-            fontFamily: 'Cambria, "Times New Roman", serif',
-            color: '#d7ffb2',
-            fontStyle: 'bold'
-        }).setOrigin(0, 0);
-
-        // Contenedor HTML con scroll para el listado del ranking
-        this.rankingDiv = document.createElement('pre');
-        this.rankingDiv.id = 'rankingJugadores';
-        if (this.rankingDiv && this.rankingDiv.node) {
-            this.rankingDiv.node.textContent = 'Cargando ranking...';
-        }
-        this.rankingDiv.style.cssText = `
-            position: absolute;
-            right: 112px;
-            top: 92.5px;
-            width: 260px;
-            max-height: 210px;
-            margin: 0;
-            padding: 4px 8px;
-            font-size: 16px;
-            font-family: 'Courier New', monospace;
-            color: #f0f7e0;
-            background: transparent;
-            border: none;
-            overflow-y: auto;
-            white-space: pre;
-        `;
-        document.body.appendChild(this.rankingDiv);
-
-        // Añadir también este elemento a la lista de DOM para limpiarlo luego
-        if (!this.domElements) {
-            this.domElements = [];
-        }
-        this.domElements.push(this.rankingDiv);
-
-        //this.cargarRanking();
-    }*/
-    /*
-    cargarRanking() {
-        window.conexionWS.suscribir('/topic/ranking', (msg) => {
-            if (!Array.isArray(msg) || msg.length === 0) {
-                if (this.rankingDiv) {
-                    this.rankingDiv.textContent = 'Sin datos de jugadores';
+        this.cadena = this.tweens.chain({
+            targets: this.text,
+            tweens: [
+                {
+                    y: 50 ,
+                    alpha: 1,
+                    ease: 'Power3' ,
+                    duration: 500
+                },{
+                    y: -50 ,
+                    alpha: 0,
+                    ease: 'Power2' ,
+                    duration: 500 ,
+                    delay: 1000
                 }
-                    return;
-            }
-
-            // Cabecera y filas con columnas alineadas, pero más compactas
-            const headerIndex = '#'.padEnd(3, ' ');       // columna índice (incluye ".")
-            const headerNombre = 'Nombre'.padEnd(12, ' ');
-            const headerPts = 'Pts'.padStart(4, ' ');
-            const headerVic = 'Vic'.padStart(4, ' ');
-
-            let lineas = [headerIndex + headerNombre + headerPts + headerVic];
-
-            msg.forEach((jug, idx) => {
-                const pos = (idx + 1).toString();
-                const colIndex = (pos + '.').padEnd(3, ' ');
-                const nombre = (jug.nombre || '').toString().substring(0, 10).padEnd(12, ' ');
-                const puntos = String(jug.puntos ?? 0).padStart(4, ' ');
-                const vict = String(jug.victorias ?? 0).padStart(4, ' ');
-                lineas.push(colIndex + nombre + puntos + vict);
-            });
-
-            if (this.rankingDiv) {
-                this.rankingDiv.textContent = lineas.join('\n');
-            }
+            ]
         });
-        window.conexionWS.enviar('/app/ranking', { });
-            /*
-        fetch('/api/ranking')
-            .then(resp => {
-                if (!resp.ok) {
-                    throw new Error('Error HTTP');
-                }
-                return resp.json();
-            })
-            .then(data => {
-                if (!Array.isArray(data) || data.length === 0) {
-                    if (this.rankingDiv) {
-                        if (this.rankingDiv && this.rankingDiv.node) {
-                            this.rankingDiv.node.textContent = 'Sin datos de jugadores';
-                        }
-                    }
-                    return;
-                }
+    }
 
-                // Cabecera y filas con columnas alineadas, pero más compactas
-                const headerIndex = '#'.padEnd(3, ' ');       // columna índice (incluye ".")
-                const headerNombre = 'Nombre'.padEnd(12, ' ');
-                const headerPts = 'Pts'.padStart(4, ' ');
-                const headerVic = 'Vic'.padStart(4, ' ');
+    shutdown() {/*
+        if (this._rankingPanel)
+            this._rankingPanel.destroy();
+        if (this.cargarBtn)
+            this.cargarBtn.destroy();
+        if (this.text)
+            this.text.destroy();
+        if (this.jugarBtn)
+            this.jugarBtn.destroy();
+        if (this.rankingText)
+            this.rankingText.destroy();
+        if (this.rankingTitulo)
+            this.rankingTitulo.destroy();
 
-                let lineas = [headerIndex + headerNombre + headerPts + headerVic];
-
-                data.forEach((jug, idx) => {
-                    const pos = (idx + 1).toString();
-                    const colIndex = (pos + '.').padEnd(3, ' ');
-                    const nombre = (jug.nombre || '').toString().substring(0, 10).padEnd(12, ' ');
-                    const puntos = String(jug.puntos ?? 0).padStart(4, ' ');
-                    const vict = String(jug.victorias ?? 0).padStart(4, ' ');
-                    lineas.push(colIndex + nombre + puntos + vict);
-                });
-
-                if (this.rankingDiv) {
-                    this.rankingDiv.textContent = lineas.join('\n');
-                }
-            })
-            .catch(() => {
-                if (this.rankingDiv) {
-                    if (this.rankingDiv && this.rankingDiv.node) {
-                        this.rankingDiv.node.textContent = 'No se pudo cargar el ranking';
-                    }
-                }
-            });*/
-    //}
-
-    shutdown() {
+        //this.tweens.removeAll();
+        this.tweens.killAll();*/
+        this.cadena.destroy();
         window.conexionWS.desuscribir('/topic/login');
         window.conexionWS.desuscribir('/topic/partida-lista');
+        window.conexionWS.desuscribir('/topic/ranking');
         if (this.canalPartida) {
             window.conexionWS.desuscribir(this.canalPartida);
         }
@@ -489,6 +390,7 @@ class escena1 extends Phaser.Scene {
                     element.parentNode.removeChild(element);
                 }
             });
-        }   
+        } 
+        this.scene.stop('menu');  
     }
 }

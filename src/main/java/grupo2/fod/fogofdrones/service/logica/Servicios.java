@@ -198,6 +198,6 @@ public class Servicios{
     }
 
     public List<Jugador> getRanking() {
-        return repo.findAllByOrderByPuntosDescVictoriasDesc();
+        return repo.findFirst12ByOrderByPuntosDescVictoriasDesc();
     }
 }

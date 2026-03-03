@@ -349,21 +349,20 @@ public class Partida implements Serializable {
 
             if(esFinPartida()) 
                 finalizarPartida();
+
         } else {
             System.out.println("Error: el jugador debe realizar una accion para pasar de turno");
             emitirMensaje("Debe realizar al menos una accion antes de pasar el turno",3);
         }
     }
 
-    public boolean puedeRecargar(Posicion posParam) {
+    public boolean puedeRecargar(Dron dron) {
         boolean puede = true;
         if(seMovio | disparo) {
             puede = false;
             System.out.println("Error: no puedes recargar la unidad una vez realizada una accion");
             emitirMensaje("No puedes recargar despues de realizar otra accion",3);
         } else {
-            Celda celdaOrigen = tablero.getCelda(posParam);
-            Dron dron = celdaOrigen.getDronEquipo(turno);
             if(dron == null) {
                 puede = false;
                 System.out.println("Error: no hay un dron en la celda seleccionada");
@@ -390,7 +389,7 @@ public class Partida implements Serializable {
     public void recargarMunicion(Posicion posParam) {
         Celda celdaOrigen = tablero.getCelda(posParam);
         Dron dron = celdaOrigen.getDronEquipo(turno);
-        if(puedeRecargar(posParam)) {
+        if(puedeRecargar(dron)) {
             dron.recargarMunicion();
             recargo = true;
             System.out.println("Recargo exitoso");
@@ -400,6 +399,17 @@ public class Partida implements Serializable {
             System.out.println("Error: recarga no vilida");
             emitirMensaje("Error: recarga no valida",3);
         }
+    }
+
+    public int obtenerMunicion(Posicion posParam, Equipo equipoParam) {
+        System.out.println(posParam.getX() +" - "+ posParam.getY());
+        Celda celdaOrigen = tablero.getCelda(posParam);
+        System.out.println(equipoParam);
+        Dron dron = celdaOrigen.getDronEquipo(equipoParam);
+        System.out.println(dron.getMunicion());
+        int municion = dron.getMunicion();
+        System.out.println(municion);
+        return municion;
     }
     
     public boolean despliegueTerminadoEquipo(Equipo equipoParam) {     // verifica si ya se desplegaron todos los drones del equipo
