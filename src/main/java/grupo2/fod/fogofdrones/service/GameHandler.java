@@ -382,6 +382,27 @@ public class GameHandler {
 			nombre = p.getJugadorAereo().getNombre();
 		}
 		try {
+			// Si cualquiera ya tiene una partida guardada, no permitir otro guardado.
+			boolean solicitanteTiene = servicios.existePartidaGuardada(solicitante);
+			boolean rivalTiene = servicios.existePartidaGuardada(nombre);
+			if (solicitanteTiene || rivalTiene) {
+				String evento;
+				if (solicitanteTiene) {
+					evento = "No se puede guardar: ya tienes una partida guardada.";
+				} else {
+					evento = "No se puede guardar: tu rival ya tiene una partida guardada.";
+				}
+				VoMensaje mensajeError = VoMensaje.builder()
+					.tipoMensaje(3)
+					.nombre(solicitante)
+					.evento(evento)
+					.build();
+				String respuestaError = mapper.writeValueAsString(mensajeError);
+				String canal = getCanalPartida(p);
+				messagingTemplate.convertAndSend(canal, respuestaError);
+				return;
+			}
+
 			//VoMensaje mensajeError = new VoMensaje(nombre, 6); // "solicitud de guardado"
 			VoMensaje mensajeGuardado = VoMensaje.builder()
 				.tipoMensaje(2)
@@ -432,7 +453,26 @@ public class GameHandler {
 			otroJugador = p.getJugadorNaval().getNombre();
 		}
 		try {
-			servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre());
+			// Validación defensiva: durante el flujo de aceptación podría existir ya un guardado.
+			if (!servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre())) {
+				String evento = "No se pudo guardar: alguno de los jugadores ya tiene una partida guardada.";
+				VoMensaje errorSolicitante = VoMensaje.builder()
+					.tipoMensaje(3)
+					.nombre(solicitante)
+					.evento(evento)
+					.build();
+				VoMensaje errorAceptador = VoMensaje.builder()
+					.tipoMensaje(3)
+					.nombre(otroJugador)
+					.evento(evento)
+					.build();
+				String respSol = mapper.writeValueAsString(errorSolicitante);
+				String respAcp = mapper.writeValueAsString(errorAceptador);
+				String canal = getCanalPartida(p);
+				messagingTemplate.convertAndSend(canal, respSol);
+				messagingTemplate.convertAndSend(canal, respAcp);
+				return;
+			}
 
 			// Notificar al solicitante y al jugador que aceptó que la solicitud fue aceptada
 			VoMensaje mensajeSolicitante = VoMensaje.builder()

@@ -108,6 +108,14 @@ class escena3 extends Phaser.Scene {
         this.conectarSTOMP();
     }
 
+    cancelarBloqueoGuardado() {
+        gameState.solicitandoGuardado = false;
+        if (this.oscurecer && this.oscurecer.destroy) {
+            this.oscurecer.destroy();
+        }
+        this.oscurecer = null;
+    }
+
     hayDronAliadoEn(x, y) {
         if (!gameState.ultimaGrilla) return false;
         const idx = x + (y * gameState.ancho);
@@ -459,6 +467,13 @@ class escena3 extends Phaser.Scene {
                 if (mensaje.nombre === msg.nombre) { // alerta error a jugador
                     this.mostrarMensajeError(msg.evento);
                     //alert("err:"+msg.evento);
+
+                    // Si el error viene de una acción de guardado, quitar el overlay
+                    // que bloquea las acciones para que el jugador pueda seguir.
+                    const evento = (msg.evento || "").toString().toLowerCase();
+                    if (gameState.solicitandoGuardado && evento.includes("guardar")) {
+                        this.cancelarBloqueoGuardado();
+                    }
                 }
             }break;
             case tipoMensaje.NOTIFICACION: { 

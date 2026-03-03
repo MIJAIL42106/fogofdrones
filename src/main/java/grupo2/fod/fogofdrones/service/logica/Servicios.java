@@ -113,10 +113,16 @@ public class Servicios{
         eliminarPartida(nombre1, nombre2);
     }
 
-    public void guardarPartida(String nombre1, String nombre2) {
+    public boolean guardarPartida(String nombre1, String nombre2) {
         String clave = generarClave(nombre1, nombre2);
         Partida partida = partidas.get(clave);
         if (partida != null) {
+            // Regla: cada jugador solo puede tener UNA partida guardada.
+            // Si cualquiera de los dos ya tiene una guardada, no sobrescribir ni crear otra.
+            if (existePartidaGuardada(nombre1) || existePartidaGuardada(nombre2)) {
+                System.out.println("[GUARDAR] RECHAZADA: alguno de los jugadores ya tiene partida guardada");
+                return false;
+            }
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             System.out.println("[GUARDAR] Guardando partida: " + clave);
             System.out.println("[GUARDAR] Fase actual: " + (partida.getFasePartida() != null ? partida.getFasePartida() : "NULL"));
@@ -126,8 +132,10 @@ public class Servicios{
             
             System.out.println("[GUARDAR] Partida guardada exitosamente");
             eliminarPartida(nombre1, nombre2);
+            return true;
         } else {
             System.out.println("[GUARDAR] ERROR: No se encontró la partida " + clave);
+            return false;
         }
     }
     /* 
