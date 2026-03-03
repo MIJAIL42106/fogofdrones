@@ -69,10 +69,13 @@ class escena1 extends Phaser.Scene {
                 this.cancelarBusqueda();
                 return;
             }
+            // Si estaba intentando cargar partida, cancelar ese flujo
+            if (this.cargandoPartida) {
+                this.cancelarCarga();
+            }
             mensajeLogin.nombre = this.nombreInput.value.trim();
             if (!mensajeLogin.nombre) {
                 this.mostrarMensajeError('Falta Nombre');
-                //alert('falta nombre');
                 return;
             }
             this.buscandoPartida = true;
@@ -89,6 +92,10 @@ class escena1 extends Phaser.Scene {
                 this.cancelarCarga();
                 return;
             }
+            // Si estaba buscando partida, cancelar ese flujo
+            if (this.buscandoPartida) {
+                this.cancelarBusqueda();
+            }
             mensajeLogin.nombre = this.nombreInput.value.trim();
             if (!mensajeLogin.nombre) {
                 this.mostrarMensajeError("Falta Nombre");
@@ -102,8 +109,6 @@ class escena1 extends Phaser.Scene {
             this.estadoTexto.setText('Esperando al rival...');
             window.conexionWS.enviar('/app/cargar', { nombre: mensajeLogin.nombre });
         });
-
-        this.mostrarMensajeError("hola");
     }
 
     // Centraliza la conexión y suscripción a los tópicos usando ConexionWS
@@ -257,6 +262,10 @@ class escena1 extends Phaser.Scene {
         this.jugarBtn.setText('BUSCAR PARTIDA');
         this.jugarBtn.setBackgroundColor('#66bb6a'); // verde claro por defecto
         this.estadoTexto.setText('');
+        // Avisar al servidor que este jugador ya no está en cola de búsqueda
+        if (mensajeLogin.nombre) {
+            window.conexionWS.enviar('/app/cancelar-login', { nombre: mensajeLogin.nombre });
+        }
     }
 
     cancelarCarga() {
@@ -265,6 +274,10 @@ class escena1 extends Phaser.Scene {
         this.cargarBtn.setText('CARGAR PARTIDA');
         this.cargarBtn.setBackgroundColor('#4b7ae5'); // azul por defecto
         this.estadoTexto.setText('');
+        // Avisar al servidor que este jugador ya no está esperando carga
+        if (mensajeLogin.nombre) {
+            window.conexionWS.enviar('/app/cancelar-cargar', { nombre: mensajeLogin.nombre });
+        }
     }
     
     normalizarNombre(value) {
@@ -375,7 +388,10 @@ class escena1 extends Phaser.Scene {
 
         //this.tweens.removeAll();
         this.tweens.killAll();*/
-        this.cadena.destroy();
+        if (this.cadena && this.cadena.destroy) {
+            this.cadena.destroy();
+            this.cadena = null;
+        }
         window.conexionWS.desuscribir('/topic/login');
         window.conexionWS.desuscribir('/topic/partida-lista');
         window.conexionWS.desuscribir('/topic/ranking');

@@ -58,6 +58,31 @@ public class GameHandler {
 			LOGGER.error("Error procesando login", e);
 		}
 	}
+
+	/**
+	 * Permite a un jugador cancelar la búsqueda de partida en el lobby.
+	 * Si el jugador estaba registrado como "jugador1" (esperando rival),
+	 * se limpia ese estado para que no se lo empareje más.
+	 */
+	@MessageMapping("/cancelar-login")
+	public void handleCancelarLogin(@Payload Map<String, Object> data) {
+		try {
+			String nombre = (String) data.get("nombre");
+			if (nombre == null || nombre.trim().isEmpty()) {
+				return;
+			}
+			if (nombre.equals(jugador1)) {
+				LOGGER.info("Cancelando búsqueda de partida para '{}' (jugador1)", nombre);
+				jugador1 = null;
+			} else if (nombre.equals(jugador2) && !servicios.existePartida(nombre)) {
+				// Caso defensivo: si por algún motivo quedó como jugador2 sin partida creada
+				LOGGER.info("Cancelando búsqueda de partida para '{}' (jugador2)", nombre);
+				jugador2 = null;
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error procesando cancelar-login", e);
+		}
+	}
 	
 	//Endpoint principal que maneja todas las acciones del juego
 	//Los clientes envían mensajes a /app/accion
@@ -395,23 +420,36 @@ public class GameHandler {
 
 	public void handleAceptar(String nombre, Partida p) {
 		System.out.println("aceptar guardado");
-		String solicitante = null;
+		String solicitante;
+		String otroJugador;
 		if ( nombre.equals(p.getJugadorAereo().getNombre()) ) {
+			// Acepta el aéreo, solicitó el naval
 			solicitante = p.getJugadorNaval().getNombre();
+			otroJugador = p.getJugadorAereo().getNombre();
 		} else {
+			// Acepta el naval, solicitó el aéreo
 			solicitante = p.getJugadorAereo().getNombre();
+			otroJugador = p.getJugadorNaval().getNombre();
 		}
 		try {
 			servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre());
 
-			VoMensaje mensajeGuardado = VoMensaje.builder()
+			// Notificar al solicitante y al jugador que aceptó que la solicitud fue aceptada
+			VoMensaje mensajeSolicitante = VoMensaje.builder()
 				.tipoMensaje(2)
 				.nombre(solicitante)
-				.evento("ACEPTADA")	// "solicitud de guardado aceptada"
-				.build(); //new VoMensaje(solicitante, 8); // "solicitud de guardado aceptada"
-			String respuesta = mapper.writeValueAsString(mensajeGuardado);
+				.evento("ACEPTADA")
+				.build();
+			VoMensaje mensajeAceptador = VoMensaje.builder()
+				.tipoMensaje(2)
+				.nombre(otroJugador)
+				.evento("ACEPTADA")
+				.build();
+			String respuestaSolicitante = mapper.writeValueAsString(mensajeSolicitante);
+			String respuestaAceptador = mapper.writeValueAsString(mensajeAceptador);
 			String canal = getCanalPartida(p);
-			messagingTemplate.convertAndSend(canal, respuesta);
+			messagingTemplate.convertAndSend(canal, respuestaSolicitante);
+			messagingTemplate.convertAndSend(canal, respuestaAceptador);
 		} catch (Exception e) {
 
 		}
@@ -460,6 +498,28 @@ public class GameHandler {
 	// Estado para carga de partida
 	private String jugadorCarga1 = null;
 	private String jugadorCarga2 = null;
+
+	/**
+	 * Permite cancelar la espera para cargar partida guardada.
+	 */
+	@MessageMapping("/cancelar-cargar")
+	public void handleCancelarCargar(@Payload Map<String, Object> data) {
+		try {
+			String nombre = (String) data.get("nombre");
+			if (nombre == null || nombre.trim().isEmpty()) {
+				return;
+			}
+			if (nombre.equals(jugadorCarga1)) {
+				LOGGER.info("Cancelando espera de carga para '{}' (jugadorCarga1)", nombre);
+				jugadorCarga1 = null;
+			} else if (nombre.equals(jugadorCarga2)) {
+				LOGGER.info("Cancelando espera de carga para '{}' (jugadorCarga2)", nombre);
+				jugadorCarga2 = null;
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error procesando cancelar-cargar", e);
+		}
+	}
 
 	@MessageMapping("/cargar")
 	public void handleCargar(@Payload Map<String, Object> data) {

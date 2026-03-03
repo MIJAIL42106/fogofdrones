@@ -220,25 +220,46 @@ class escena3 extends Phaser.Scene {
             } break;
             case tipoMensaje.GUARDADO: {
                 console.log("GUARDADO - evento:", msg.evento, "destino:", msg.nombre);
-                if (mensaje.nombre === msg.nombre) { // alerta error al jugador afectado
-                    switch (msg.evento) {
-                        case "SOLICITUD":{
+                switch (msg.evento) {
+                    case "SOLICITUD": {
+                        // Solo el jugador destinatario ve el popup de aceptar/rechazar
+                        if (mensaje.nombre === msg.nombre) {
                             this.solicitarGuardado();
-                        }break;
-                        case "RECHAZADA":{
+                        }
+                    } break;
+                    case "RECHAZADA": {
+                        // Solo el solicitante ve el mensaje de rechazo
+                        if (mensaje.nombre === msg.nombre) {
                             this.mostrarMensajeEvento("Solicitud de guardado rechazada");
-                            //alert("Solicitud de guardado rechazada");
                             gameState.solicitandoGuardado = false;
+                            if (this.oscurecer && this.oscurecer.destroy) {
+                                this.oscurecer.destroy();
+                                this.oscurecer = null;
+                            }
+                        }
+                    } break;
+                    case "ACEPTADA": {
+                        // Cuando la partida se guarda, sacamos al jugador al menú
+                        // independientemente de inconsistencias menores en el nombre.
+                        this.mostrarMensajeEvento("Solicitud de guardado aceptada");
+                        gameState.solicitandoGuardado = false;
+                        if (this.oscurecer && this.oscurecer.destroy) {
                             this.oscurecer.destroy();
-                        }break;
-                        case "ACEPTADA":{
-                            this.mostrarMensajeEvento("Solicitud de guardado aceptada");
-                            //alert("Solicitud de guardado aceptada");
-                            //this.scene.stop('partida');
-                            this.shutdown();
-                            this.scene.start('menu');
-                        }break;  
-                    }
+                            this.oscurecer = null;
+                        }
+                        // Esperamos un momento para que se vea el mensaje.
+                        // Usamos setTimeout para no depender del reloj interno de Phaser.
+                        setTimeout(() => {
+                            console.log('Delay GUARDADO/ACEPTADA cumplido, cerrando escena partida');
+                            try {
+                                this.shutdown();
+                            } catch (e) {
+                                console.error('Error en shutdown() tras GUARDADO/ACEPTADA:', e);
+                            } finally {
+                                this.scene.start('menu');
+                            }
+                        }, 2500);
+                    } break;
                 }
             }break;
             case tipoMensaje.ERROR: { 
@@ -293,16 +314,18 @@ class escena3 extends Phaser.Scene {
                 this.mostrarMensajeEvento(mensajeFin);
                 
                 //alert(mensajeFin);
-                // Al aceptar, salir de la partida y volver al menú
-                //this.scene.stop('partida');
-                /*
+                // Esperar un momento antes de volver al menú para que se vea el mensaje.
+                // Usamos setTimeout para no depender del reloj interno de Phaser.
                 setTimeout(() => {
-                    this.shutdown();
-                    this.scene.start('menu');
-                }, 4000); 
-                */
-                this.shutdown();
-                this.scene.start('menu');
+                    console.log('Delay FINALIZACION cumplido, cerrando escena partida');
+                    try {
+                        this.shutdown();
+                    } catch (e) {
+                        console.error('Error en shutdown() tras FINALIZACION:', e);
+                    } finally {
+                        this.scene.start('menu');
+                    }
+                }, 2500);
                 // Desconectar websocket si es necesario
                 /*
                 if (window.conexionWS) {
@@ -640,9 +663,13 @@ class escena3 extends Phaser.Scene {
             gameState.clicks = 0;
             mensaje.accion = "ACEPTAR";               
             this.enviarMensage(mensaje); 
-            //this.scene.stop('partida');
-            this.shutdown();
-            this.scene.start('menu');
+			// El cierre de la partida y vuelta al menú
+			// se hará cuando llegue el mensaje GUARDADO/ACEPTADA
+			gameState.solicitandoGuardado = true;
+			oscurecer.destroy();
+			alerta.destroy();
+			rechazarBtn.destroy();
+			aceptarBtn.destroy();
         });
     }
 
@@ -775,8 +802,14 @@ class escena3 extends Phaser.Scene {
         this.anims.remove('tiroAguaN');
         //this.tweens.removeAll();
         //this.tweens.killAll();
-        this.cadena1.destroy();
-        this.cadena2.destroy();
+        if (this.cadena1 && this.cadena1.destroy) {
+            this.cadena1.destroy();
+            this.cadena1 = null;
+        }
+        if (this.cadena2 && this.cadena2.destroy) {
+            this.cadena2.destroy();
+            this.cadena2 = null;
+        }
         gameState.colorVerde = 0xaaffaa ;                       //
         gameState.colorRojo = 0xffaaaa ;                        //
         gameState.colorSelec = 0x7cff89 ;                        //
@@ -810,7 +843,8 @@ class escena3 extends Phaser.Scene {
         if (gameState.canalPartida) {
             window.conexionWS.desuscribir(gameState.canalPartida);
         }
-        this.scene.stop('partida');
+        // No detenemos ni cambiamos la escena aquí; eso se hace
+        // explícitamente en los manejadores de mensajes (FINALIZACION/GUARDADO)
     }
     
     update() {
