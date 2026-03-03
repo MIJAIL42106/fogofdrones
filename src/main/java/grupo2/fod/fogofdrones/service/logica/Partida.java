@@ -397,7 +397,7 @@ public class Partida implements Serializable {
             terminarTurno();
         } else {
             //System.out.println("Error: recarga no valida");
-            emitirMensaje("Error: recarga no valida",3);
+            //emitirMensaje("Error: recarga no valida",3);
         }
     }
 

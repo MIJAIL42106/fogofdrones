@@ -26,7 +26,8 @@ gameState = {
     droneSeleccionadoIdx: null,
     droneClicksDespues: 0,
     droneAccionX: null,
-    droneAccionY: null
+    droneAccionY: null,
+    ultimaGrilla: null
 }; 
 
 const mensaje = {
@@ -59,112 +60,7 @@ class Celda {                                   // calse celda para grilla
         this.tile.setInteractive();             // se setea interactivo para poder darle interaccion con mouse despues
                                                 // 
         this.tile.on('pointerdown', () => {     // asigna interaccion al clikear
-            //grid.textoMunicion.setText("-/-");
-            if (gameState.fase === "DESPLIEGUE") {
-                const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
-                const celdaPrev = grid.tablero.getAt(idxPrev);
-                if (celdaPrev && celdaPrev.setStrokeStyle) {
-                    celdaPrev.setStrokeStyle(0.0, gameState.bordes);
-                }
-                mensaje.xi = x;
-                mensaje.yi = y;
-                mensaje.xf = x;
-                mensaje.yf = y;
-                this.tile.setStrokeStyle(3, gameState.colorSelec);    // hacer funcion borrar tinte seleccion para borrar al apretar boton
-            } else {
-                // Si hay un dron seleccionado, contamos los clics de casilla
-                if (gameState.droneSeleccionadoIdx !== null && gameState.droneSeleccionadoIdx !== undefined) {
-                    if (gameState.droneClicksDespues === undefined) {
-                        gameState.droneClicksDespues = 0;
-                    }
-                    gameState.droneClicksDespues++;
-                    // En el primer clic de casilla después de seleccionar dron,
-                    // reiniciamos la selección: se borran la inicial y la final anteriores
-                    // (sin tocar la celda del dron), y este clic pasa a ser la nueva selección inicial.
-                    if (gameState.droneClicksDespues === 1) {
-                        const idxIniSel = mensaje.xi + (mensaje.yi * gameState.ancho);
-                        const idxFinSel = mensaje.xf + (mensaje.yf * gameState.ancho);
-
-                        if (idxIniSel !== gameState.droneSeleccionadoIdx) {
-                            const celIniSel = grid.tablero.getAt(idxIniSel);
-                            if (celIniSel && celIniSel.setStrokeStyle) {
-                                celIniSel.setStrokeStyle(0, gameState.bordes);
-                            }
-                        }
-                        if (idxFinSel !== idxIniSel && idxFinSel !== gameState.droneSeleccionadoIdx) {
-                            const celFinSel = grid.tablero.getAt(idxFinSel);
-                            if (celFinSel && celFinSel.setStrokeStyle) {
-                                celFinSel.setStrokeStyle(0, gameState.bordes);
-                            }
-                        }
-
-                        // Este clic se considera el primer clic de selección
-                        gameState.clicks = 1;
-                        mensaje.xi = x;
-                        mensaje.yi = y;
-                        mensaje.xf = x;
-                        mensaje.yf = y;
-                        this.tile.setStrokeStyle(3, gameState.colorSelec);
-                        return;
-                    }
-                    // En el segundo clic de casilla después de seleccionar dron,
-                    // se quita el borde del dron y se limpia el estado.
-                    if (gameState.droneClicksDespues >= 2) {
-                        const celDron = grid.tablero.getAt(gameState.droneSeleccionadoIdx);
-                        if (celDron && celDron.setStrokeStyle) {
-                            celDron.setStrokeStyle(0, gameState.bordes);
-                        }
-                        gameState.droneSeleccionadoIdx = null;
-                        gameState.droneClicksDespues = 0;
-                    }
-                }
-                if (gameState.clicks === 0){
-                    gameState.clicks ++;
-                    const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
-                    const celdaPrev = grid.tablero.getAt(idxPrev);
-                    if (celdaPrev && celdaPrev.setStrokeStyle) {
-                        celdaPrev.setStrokeStyle(0.0, gameState.bordes);
-                    }
-                    mensaje.xi = x;
-                    mensaje.yi = y;
-                    mensaje.xf = x;
-                    mensaje.yf = y;
-
-                    this.tile.setStrokeStyle(3, gameState.colorSelec);
-                } else if ( gameState.clicks === 1 ) {
-                    gameState.clicks ++;
-                    const idxIni = mensaje.xi + (mensaje.yi * gameState.ancho);
-                    const idxPrev = mensaje.xf + (mensaje.yf * gameState.ancho);
-                    // No borrar el borde si la "final" anterior coincide con la inicial.
-                    // Esto permite que queden iluminadas 2 casillas (ini + fin).
-                    if (idxPrev !== idxIni) {
-                        const celdaPrev = grid.tablero.getAt(idxPrev);
-                        if (celdaPrev && celdaPrev.setStrokeStyle) {
-                            celdaPrev.setStrokeStyle(0.0, gameState.bordes);
-                        }
-                    }
-                    mensaje.xf = x;
-                    mensaje.yf = y;
-                    this.tile.setStrokeStyle(3, gameState.colorSelec);
-                } else {
-                    gameState.clicks ++;
-                    const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
-                    const celdaPrev = grid.tablero.getAt(idxPrev);
-                    if (celdaPrev && celdaPrev.setStrokeStyle) {
-                        celdaPrev.setStrokeStyle(0.0, gameState.bordes);
-                    }
-                    mensaje.xi = mensaje.xf;
-                    mensaje.yi = mensaje.yf;
-                    const idxNew = mensaje.xf + (mensaje.yf * gameState.ancho);
-                    const celdaNew = grid.tablero.getAt(idxNew);
-                    if (celdaNew && celdaNew.setStrokeStyle) {
-                        celdaNew.setStrokeStyle(3, gameState.bordes);
-                    }
-                    mensaje.xf = x;
-                    mensaje.yf = y;
-                    this.tile.setStrokeStyle(3, gameState.colorSelec);
-                }
-            }
+            grid.onCasillaPointerDown(x, y, this.tile);
         });
         
         grid.tablero.add(this.tile);            // agrega el rectangulo creado a el tablero
@@ -210,6 +106,185 @@ class escena3 extends Phaser.Scene {
         this.crearPortadrones();
         this.crearTablero();
         this.conectarSTOMP();
+    }
+
+    hayDronAliadoEn(x, y) {
+        if (!gameState.ultimaGrilla) return false;
+        const idx = x + (y * gameState.ancho);
+        const cel = gameState.ultimaGrilla[idx];
+        if (!cel) return false;
+        if (gameState.equipo === "NAVAL") return !!cel.naval;
+        if (gameState.equipo === "AEREO") return !!cel.aereo;
+        return false;
+    }
+
+    enviarMunicionPara(x, y) {
+        const oldXi = mensaje.xi;
+        const oldYi = mensaje.yi;
+        const oldXf = mensaje.xf;
+        const oldYf = mensaje.yf;
+        const oldAccion = mensaje.accion;
+
+        mensaje.xi = x;
+        mensaje.yi = y;
+        mensaje.xf = x;
+        mensaje.yf = y;
+        mensaje.accion = "MUNICION";
+        this.enviarMensage(mensaje);
+
+        mensaje.xi = oldXi;
+        mensaje.yi = oldYi;
+        mensaje.xf = oldXf;
+        mensaje.yf = oldYf;
+        mensaje.accion = oldAccion;
+    }
+
+    limpiarBordesCasillasSeleccionadas() {
+        if (!this.tablero) return;
+
+        const idxIni = mensaje.xi + (mensaje.yi * gameState.ancho);
+        const idxFin = mensaje.xf + (mensaje.yf * gameState.ancho);
+
+        const celIni = this.tablero.getAt(idxIni);
+        if (celIni && celIni.setStrokeStyle) {
+            celIni.setStrokeStyle(0, gameState.bordes);
+        }
+
+        if (idxFin !== idxIni) {
+            const celFin = this.tablero.getAt(idxFin);
+            if (celFin && celFin.setStrokeStyle) {
+                celFin.setStrokeStyle(0, gameState.bordes);
+            }
+        }
+    }
+
+    onCasillaPointerDown(x, y, tile, options) {
+        if (!tile || !this.tablero) return;
+
+        const opts = options || {};
+        const ignoreDroneSelection = !!opts.ignoreDroneSelection;
+        const resetSelection = !!opts.resetSelection;
+
+        if (resetSelection) {
+            this.limpiarBordesCasillasSeleccionadas();
+            gameState.clicks = 0;
+        }
+
+        //grid.textoMunicion.setText("-/-");
+        if (gameState.fase === "DESPLIEGUE") {
+            const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
+            const celdaPrev = this.tablero.getAt(idxPrev);
+            if (celdaPrev && celdaPrev.setStrokeStyle) {
+                celdaPrev.setStrokeStyle(0.0, gameState.bordes);
+            }
+            mensaje.xi = x;
+            mensaje.yi = y;
+            mensaje.xf = x;
+            mensaje.yf = y;
+            tile.setStrokeStyle(3, gameState.colorSelec);    // hacer funcion borrar tinte seleccion para borrar al apretar boton
+            return;
+        }
+
+        // Si hay un dron seleccionado, contamos los clics de casilla
+        if (!ignoreDroneSelection && gameState.droneSeleccionadoIdx !== null && gameState.droneSeleccionadoIdx !== undefined) {
+            if (gameState.droneClicksDespues === undefined) {
+                gameState.droneClicksDespues = 0;
+            }
+            gameState.droneClicksDespues++;
+            // En el primer clic de casilla después de seleccionar dron,
+            // reiniciamos la selección: se borran la inicial y la final anteriores
+            // (sin tocar la celda del dron), y este clic pasa a ser la nueva selección inicial.
+            if (gameState.droneClicksDespues === 1) {
+                const idxIniSel = mensaje.xi + (mensaje.yi * gameState.ancho);
+                const idxFinSel = mensaje.xf + (mensaje.yf * gameState.ancho);
+
+                if (idxIniSel !== gameState.droneSeleccionadoIdx) {
+                    const celIniSel = this.tablero.getAt(idxIniSel);
+                    if (celIniSel && celIniSel.setStrokeStyle) {
+                        celIniSel.setStrokeStyle(0, gameState.bordes);
+                    }
+                }
+                if (idxFinSel !== idxIniSel && idxFinSel !== gameState.droneSeleccionadoIdx) {
+                    const celFinSel = this.tablero.getAt(idxFinSel);
+                    if (celFinSel && celFinSel.setStrokeStyle) {
+                        celFinSel.setStrokeStyle(0, gameState.bordes);
+                    }
+                }
+
+                // Este clic se considera el primer clic de selección
+                gameState.clicks = 1;
+                mensaje.xi = x;
+                mensaje.yi = y;
+                mensaje.xf = x;
+                mensaje.yf = y;
+                tile.setStrokeStyle(3, gameState.colorSelec);
+                return;
+            }
+            // En el segundo clic de casilla después de seleccionar dron,
+            // se quita el borde del dron y se limpia el estado.
+            if (gameState.droneClicksDespues >= 2) {
+                const celDron = this.tablero.getAt(gameState.droneSeleccionadoIdx);
+                if (celDron && celDron.setStrokeStyle) {
+                    celDron.setStrokeStyle(0, gameState.bordes);
+                }
+                gameState.droneSeleccionadoIdx = null;
+                gameState.droneClicksDespues = 0;
+            }
+        }
+
+        if (gameState.clicks === 0){
+            gameState.clicks ++;
+            const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
+            const celdaPrev = this.tablero.getAt(idxPrev);
+            if (celdaPrev && celdaPrev.setStrokeStyle) {
+                celdaPrev.setStrokeStyle(0.0, gameState.bordes);
+            }
+            mensaje.xi = x;
+            mensaje.yi = y;
+            mensaje.xf = x;
+            mensaje.yf = y;
+
+            tile.setStrokeStyle(3, gameState.colorSelec);
+        } else if ( gameState.clicks === 1 ) {
+            gameState.clicks ++;
+            const idxIni = mensaje.xi + (mensaje.yi * gameState.ancho);
+            const idxPrev = mensaje.xf + (mensaje.yf * gameState.ancho);
+            // No borrar el borde si la "final" anterior coincide con la inicial.
+            // Esto permite que queden iluminadas 2 casillas (ini + fin).
+            if (idxPrev !== idxIni) {
+                const celdaPrev = this.tablero.getAt(idxPrev);
+                if (celdaPrev && celdaPrev.setStrokeStyle) {
+                    celdaPrev.setStrokeStyle(0.0, gameState.bordes);
+                }
+            }
+            mensaje.xf = x;
+            mensaje.yf = y;
+            tile.setStrokeStyle(3, gameState.colorSelec);
+        } else {
+            // Si el usuario vuelve a clickear la misma celda final (doble click sobre el destino),
+            // no rotar la selección (xi <- xf) porque se pierde el origen.
+            // Esto es importante para acciones como ATACAR, donde xi/yi es el origen y xf/yf el destino.
+            if (x === mensaje.xf && y === mensaje.yf) {
+                tile.setStrokeStyle(3, gameState.colorSelec);
+                return;
+            }
+            gameState.clicks ++;
+            const idxPrev = mensaje.xi + (mensaje.yi * gameState.ancho);
+            const celdaPrev = this.tablero.getAt(idxPrev);
+            if (celdaPrev && celdaPrev.setStrokeStyle) {
+                celdaPrev.setStrokeStyle(0.0, gameState.bordes);
+            }
+            mensaje.xi = mensaje.xf;
+            mensaje.yi = mensaje.yf;
+            const idxNew = mensaje.xf + (mensaje.yf * gameState.ancho);
+            const celdaNew = this.tablero.getAt(idxNew);
+            if (celdaNew && celdaNew.setStrokeStyle) {
+                celdaNew.setStrokeStyle(3, gameState.bordes);
+            }
+            mensaje.xf = x;
+            mensaje.yf = y;
+            tile.setStrokeStyle(3, gameState.colorSelec);
+        }
     }
 
     limpiarBordesSeleccion() {
@@ -280,6 +355,8 @@ class escena3 extends Phaser.Scene {
             } break;
             case tipoMensaje.ESTADOPARTIDA: {
                 console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
+                // Guardar grilla para poder detectar ocupación de celdas (p.ej. aliado+enemigo superpuestos)
+                gameState.ultimaGrilla = msg.grilla;
                 // actualizado de fase de partida
                 gameState.fase = msg.fasePartida.toString();
                 if (msg.fasePartida.toString() === "JUGANDO") {
@@ -855,54 +932,48 @@ class escena3 extends Phaser.Scene {
                 gameState.droneAccionX = dron.gridX;
                 gameState.droneAccionY = dron.gridY;
 
-                // Al seleccionar un dron, limpiar la celda inicial actual
-                // (primera celda clickeada) si hay una selección de 2 celdas,
-                // conservando la final.
-                const idxIniSel = mensaje.xi + (mensaje.yi * gameState.ancho);
-                const idxFinSel = mensaje.xf + (mensaje.yf * gameState.ancho);
-                if (idxIniSel !== idxFinSel) {
-                    const celIniSel = this.tablero.getAt(idxIniSel);
-                    if (celIniSel && celIniSel.setStrokeStyle) {
-                        celIniSel.setStrokeStyle(0, gameState.bordes);
-                    }
-                }
-
-                // Limpiar selección de dron anterior (si hubiera) pero
-                // sin tocar las celdas de origen/final ya seleccionadas.
-                if (gameState.droneSeleccionadoIdx !== null && gameState.droneSeleccionadoIdx !== undefined) {
-                    const celPrevDron = this.tablero.getAt(gameState.droneSeleccionadoIdx);
+                // Limpiar borde del dron previamente seleccionado (si hubiera)
+                const prevDronIdx = gameState.droneSeleccionadoIdx;
+                if (prevDronIdx !== null && prevDronIdx !== undefined) {
+                    const celPrevDron = this.tablero.getAt(prevDronIdx);
                     if (celPrevDron && celPrevDron.setStrokeStyle) {
                         celPrevDron.setStrokeStyle(0, gameState.bordes);
                     }
                 }
 
                 const idxDron = dron.gridX + (dron.gridY * gameState.ancho);
-                const celDron = this.tablero.getAt(idxDron);
-                if (celDron && celDron.setStrokeStyle) {
-                    celDron.setStrokeStyle(3, gameState.colorSelec);
+                const tile = this.tablero ? this.tablero.getAt(idxDron) : null;
+                if (tile) {
+                    // Delegar selección de casilla a un solo lugar
+                    this.onCasillaPointerDown(dron.gridX, dron.gridY, tile, {
+                        resetSelection: true,
+                        ignoreDroneSelection: true,
+                    });
                 }
 
                 gameState.droneSeleccionadoIdx = idxDron;
                 gameState.droneClicksDespues = 0;
 
-                // Enviar consulta de munición usando temporalmente
-                // la posición del dron, sin alterar la selección actual.
-                const oldXi = mensaje.xi;
-                const oldYi = mensaje.yi;
-                const oldXf = mensaje.xf;
-                const oldYf = mensaje.yf;
-
-                mensaje.xi = dron.gridX;
-                mensaje.yi = dron.gridY;
-                mensaje.xf = dron.gridX;
-                mensaje.yf = dron.gridY;
+                // Consultar munición sin dejar el estado "accion" colgado.
+                const oldAccion = mensaje.accion;
                 mensaje.accion = "MUNICION";
                 this.enviarMensage(mensaje);
+                mensaje.accion = oldAccion;
+            } else {
+                // Si el jugador no es NAVAL, el click en este sprite (dron naval) debe
+                // comportarse como click en la celda subyacente (por ejemplo para seleccionar
+                // un objetivo enemigo para ATACAR).
+                const idx = dron.gridX + (dron.gridY * gameState.ancho);
+                const tile = this.tablero ? this.tablero.getAt(idx) : null;
+                if (tile) {
+                    this.onCasillaPointerDown(dron.gridX, dron.gridY, tile);
+                }
 
-                mensaje.xi = oldXi;
-                mensaje.yi = oldYi;
-                mensaje.xf = oldXf;
-                mensaje.yf = oldYf;
+                // Si en esa misma celda también hay un dron aliado (superposición),
+                // actualizar munición igualmente.
+                if (this.hayDronAliadoEn(dron.gridX, dron.gridY)) {
+                    this.enviarMunicionPara(dron.gridX, dron.gridY);
+                }
             }
         });
         
@@ -930,54 +1001,48 @@ class escena3 extends Phaser.Scene {
                 gameState.droneAccionX = dron.gridX;
                 gameState.droneAccionY = dron.gridY;
 
-                // Al seleccionar un dron, limpiar la celda inicial actual
-                // (primera celda clickeada) si hay una selección de 2 celdas,
-                // conservando la final.
-                const idxIniSel = mensaje.xi + (mensaje.yi * gameState.ancho);
-                const idxFinSel = mensaje.xf + (mensaje.yf * gameState.ancho);
-                if (idxIniSel !== idxFinSel) {
-                    const celIniSel = this.tablero.getAt(idxIniSel);
-                    if (celIniSel && celIniSel.setStrokeStyle) {
-                        celIniSel.setStrokeStyle(0, gameState.bordes);
-                    }
-                }
-
-                // Limpiar selección de dron anterior (si hubiera) pero
-                // sin tocar las celdas de origen/final ya seleccionadas.
-                if (gameState.droneSeleccionadoIdx !== null && gameState.droneSeleccionadoIdx !== undefined) {
-                    const celPrevDron = this.tablero.getAt(gameState.droneSeleccionadoIdx);
+                // Limpiar borde del dron previamente seleccionado (si hubiera)
+                const prevDronIdx = gameState.droneSeleccionadoIdx;
+                if (prevDronIdx !== null && prevDronIdx !== undefined) {
+                    const celPrevDron = this.tablero.getAt(prevDronIdx);
                     if (celPrevDron && celPrevDron.setStrokeStyle) {
                         celPrevDron.setStrokeStyle(0, gameState.bordes);
                     }
                 }
 
                 const idxDron = dron.gridX + (dron.gridY * gameState.ancho);
-                const celDron = this.tablero.getAt(idxDron);
-                if (celDron && celDron.setStrokeStyle) {
-                    celDron.setStrokeStyle(3, gameState.colorSelec);
+                const tile = this.tablero ? this.tablero.getAt(idxDron) : null;
+                if (tile) {
+                    // Delegar selección de casilla a un solo lugar
+                    this.onCasillaPointerDown(dron.gridX, dron.gridY, tile, {
+                        resetSelection: true,
+                        ignoreDroneSelection: true,
+                    });
                 }
 
                 gameState.droneSeleccionadoIdx = idxDron;
                 gameState.droneClicksDespues = 0;
 
-                // Enviar consulta de munición usando temporalmente
-                // la posición del dron, sin alterar la selección actual.
-                const oldXi = mensaje.xi;
-                const oldYi = mensaje.yi;
-                const oldXf = mensaje.xf;
-                const oldYf = mensaje.yf;
-
-                mensaje.xi = dron.gridX;
-                mensaje.yi = dron.gridY;
-                mensaje.xf = dron.gridX;
-                mensaje.yf = dron.gridY;
+                // Consultar munición sin dejar el estado "accion" colgado.
+                const oldAccion = mensaje.accion;
                 mensaje.accion = "MUNICION";
                 this.enviarMensage(mensaje);
+                mensaje.accion = oldAccion;
+            } else {
+                // Si el jugador no es AEREO, el click en este sprite (dron aéreo) debe
+                // comportarse como click en la celda subyacente (por ejemplo para seleccionar
+                // un objetivo enemigo para ATACAR).
+                const idx = dron.gridX + (dron.gridY * gameState.ancho);
+                const tile = this.tablero ? this.tablero.getAt(idx) : null;
+                if (tile) {
+                    this.onCasillaPointerDown(dron.gridX, dron.gridY, tile);
+                }
 
-                mensaje.xi = oldXi;
-                mensaje.yi = oldYi;
-                mensaje.xf = oldXf;
-                mensaje.yf = oldYf;
+                // Si en esa misma celda también hay un dron aliado (superposición),
+                // actualizar munición igualmente.
+                if (this.hayDronAliadoEn(dron.gridX, dron.gridY)) {
+                    this.enviarMunicionPara(dron.gridX, dron.gridY);
+                }
             }
         });
 
