@@ -7,7 +7,7 @@ gameState = {
     ancho: 64,                                  // cantidad de celdas horizontales
     alto: 36,                                    // cantidad de celdas verticales
     tableroX: 50, 
-    tableroY: 60,
+    tableroY: 120,
     miTurno: false,                   // no se usa
     clicks: 0,
     fase: "",
@@ -20,7 +20,7 @@ gameState = {
     portaAY: 0,
     anchoPorta: 4,
     altoPorta: 6,
-    escala: 22.36,
+    escala: 26,//22.36, // 1.16
     tamCelda: 23,               // ver que tan necesario es teniendo escala
     solicitandoGuardado: false,
     escalaBtn: 1.5 
@@ -511,12 +511,12 @@ class escena3 extends Phaser.Scene {
         var posX = (gameState.portaNX + (gameState.anchoPorta / 2))* gameState.escala - (gameState.escala* 0.5) + gameState.tableroX;
         var posY = (gameState.portaNY - (gameState.altoPorta / 2))* gameState.escala + (gameState.escala * 0.5) + gameState.tableroY;
         this.portadronN = this.add.image(posX, posY, "PortaN").setDepth(2).setOrigin(0.5, 0.5);
-        this.portadronN.setScale(1.1); //2,8
+        this.portadronN.setScale(1.25); // 1.1 //2,8
 
         posX = (gameState.portaAX - (gameState.anchoPorta / 2))* gameState.escala + (gameState.escala* 0.5) + gameState.tableroX;
         posY = (gameState.portaAY + (gameState.altoPorta / 2))* gameState.escala - (gameState.escala * 0.5) + gameState.tableroY;
         this.portadronA = this.add.image(posX, posY, "PortaA").setDepth(2).setOrigin(0.5, 0.5);
-        this.portadronA.setScale(1.1); 
+        this.portadronA.setScale(1.25); 
 
         this.forma = this.add.graphics().setDepth(3);
         this.forma.clear();
@@ -567,16 +567,16 @@ class escena3 extends Phaser.Scene {
         var fondo = this.add.image(960,540,"Fondo").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
         fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
         // ver si se puede usar tableroX y tableroY para posicion de escenario
-        var escenario = this.add.image(38, 48,"Escenario").setOrigin(0, 0).setDepth(0);
-        escenario.setScale(1);
+        var escenario = this.add.image(gameState.tableroX - gameState.escala/2, gameState.tableroY - gameState.escala/2,"Escenario").setOrigin(0, 0).setDepth(0);
+        escenario.setScale(1.163);
 
         this.zonaDesp;
-        const anchoZona = 15 * gameState.tamCelda-gameState.tamCelda / 2; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando
-        const altoZona = (gameState.alto-1) * gameState.tamCelda;   // -1 
+        const anchoZona = 15 * gameState.escala; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando // -gameState.escala / 2
+        const altoZona = gameState.alto * gameState.escala;   // -1 
         if (gameState.equipo === "NAVAL") {
-            this.zonaDesp = this.add.rectangle(gameState.tableroX-gameState.tamCelda / 2, gameState.tableroY-gameState.tamCelda / 2, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
+            this.zonaDesp = this.add.rectangle(gameState.tableroX-gameState.escala / 2, gameState.tableroY-gameState.escala / 2, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
         } else {
-            this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+gameState.tamCelda / 2, gameState.tableroY-gameState.tamCelda / 2, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
+            this.zonaDesp = this.add.rectangle(63*gameState.escala+gameState.tableroX+gameState.escala / 2, gameState.tableroY-gameState.escala / 2, anchoZona, altoZona, gameState.colorRojo).setOrigin(1,0);
         }
         this.zonaDesp.setStrokeStyle(1, gameState.bordes).setAlpha(0.2).setDepth(1); 
 
