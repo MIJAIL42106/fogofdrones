@@ -530,11 +530,10 @@ class escena3 extends Phaser.Scene {
     // podria no pasarse el boton
     botonPasar(boton) {
         const p = boton;
-        var pos = boton.x;
         p.destroy();
-        var pasarBtn = this.add.image(pos,960,"Pasar").setDepth(2).setInteractive();
+        var pasarBtn = this.add.image(boton.x, boton.y, "Pasar").setScale(gameState.escalaBtn).setDepth(2).setInteractive();
         
-        pasarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+        pasarBtn.on('pointerover', () => {     // asigna interaccion al clikear
             if ( ! gameState.solicitandoGuardado) {
                 pasarBtn.setScale(gameState.escalaBtn + 0.2);  
                 this.textoAyudas.setText("Pasar");
@@ -586,7 +585,7 @@ class escena3 extends Phaser.Scene {
 
         this.textoAyudas = this.add.text(0, 0, " ", {fontSize: '25px', fill: '#fff', backgroundColor: '#000' }).setVisible(false).setOrigin(0.5, 0.5).setDepth(3);;
         
-        const posXBtn = 1850 ;
+        const posXBtn = 1800 ;
         this.textoMunicion = this.add.text(posXBtn, 350, "-", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0.5, 0.5).setDepth(1);
         
         const tamBtn = 64 * gameState.escalaBtn ;
