@@ -30,6 +30,7 @@ public class WebSocketDisconnectListener {
 
     private final SesionJugadores sesionJugadores;
     private final Servicios servicios;
+    private final GameHandler gameHandler;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -47,9 +48,11 @@ public class WebSocketDisconnectListener {
     public WebSocketDisconnectListener(
             SesionJugadores sesionJugadores,
             Servicios servicios,
+            GameHandler gameHandler,
             SimpMessagingTemplate messagingTemplate) {
         this.sesionJugadores = sesionJugadores;
         this.servicios = servicios;
+        this.gameHandler = gameHandler;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -61,6 +64,19 @@ public class WebSocketDisconnectListener {
         String nombre = sesionJugadores.eliminarPorSession(sessionId);
 
         if (nombre == null || nombre.isBlank()) {
+            return;
+        }
+
+
+        // Si no estaba en partida, puede estar esperando en lobby/carga.
+        // Limpiar inmediatamente para que nadie se empareje con un "fantasma".
+        Partida partidaActual = servicios.getPartidaJugador(nombre);
+        if (partidaActual == null) {
+            try {
+                gameHandler.limpiarColasPorDesconexion(nombre);
+            } catch (Exception ex) {
+                LOGGER.error("Error limpiando colas por desconexión (jugador='{}')", nombre, ex);
+            }
             return;
         }
 

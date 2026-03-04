@@ -37,14 +37,42 @@ public class GameHandler {
 	private SesionJugadores sesionJugadores;
 	private String jugador1 = null;
 	private String jugador2 = null;
+
+	/**
+	 * Limpia cualquier estado de espera (lobby o carga) asociado a un jugador.
+	 * Se usa desde el listener de disconnect para evitar "jugadores fantasma".
+	 */
+	public synchronized void limpiarColasPorDesconexion(String nombre) {
+		if (nombre == null || nombre.trim().isEmpty()) {
+			return;
+		}
+		if (nombre.equals(jugador1)) {
+			LOGGER.info("Limpiando cola lobby: removiendo jugador1='{}' por desconexión", nombre);
+			jugador1 = null;
+		}
+		if (nombre.equals(jugador2)) {
+			LOGGER.info("Limpiando cola lobby: removiendo jugador2='{}' por desconexión", nombre);
+			jugador2 = null;
+		}
+
+		// Limpieza de cola de carga por pareja.
+		String clave = clavePendientePorJugador.remove(nombre);
+		if (clave != null) {
+			LOGGER.info("Limpiando cola carga: removiendo '{}' (clave={}) por desconexión", nombre, clave);
+			cargaPendientePorClave.remove(clave, nombre);
+		}
+		// Defensivo: si el índice inverso se desincronizó, removerlo igual.
+		cargaPendientePorClave.entrySet().removeIf(e -> nombre.equals(e.getValue()));
+	}
 	
 	private ObjectMapper mapper = new ObjectMapper();
 	
 	@MessageMapping("/login")
-	public void handleActionMenu(@Payload Map<String, Object> data) {
+	public void handleActionMenu(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
 			String nombre = (String) data.get("nombre");
 			LOGGER.info("Login solicitado por '{}'", nombre);
+			sesionJugadores.registrar(sessionId, nombre);
 
 			if (nombre == null || nombre.trim().isEmpty()) {
 				enviarErrorLogin("", "Nombre inválido"); // "Nombre inválido"
@@ -69,7 +97,7 @@ public class GameHandler {
 	 * se limpia ese estado para que no se lo empareje más.
 	 */
 	@MessageMapping("/cancelar-login")
-	public void handleCancelarLogin(@Payload Map<String, Object> data) {
+	public synchronized void handleCancelarLogin(@Payload Map<String, Object> data) {
 		try {
 			String nombre = (String) data.get("nombre");
 			if (nombre == null || nombre.trim().isEmpty()) {
@@ -244,7 +272,7 @@ public class GameHandler {
 	
 	//Maneja la creación de jugadores y partida
 	 
-	private void handleCrearJugador(String nombre) {
+	private synchronized void handleCrearJugador(String nombre) {
 		try {
 			if (jugador1 == null) {
 				jugador1 = nombre;
@@ -610,10 +638,11 @@ public class GameHandler {
 	}
 
 	@MessageMapping("/cargar")
-	public void handleCargar(@Payload Map<String, Object> data) {
+	public void handleCargar(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
 			String nombre = (String) data.get("nombre");
 			LOGGER.info("Cargar solicitado por '{}'", nombre);
+			sesionJugadores.registrar(sessionId, nombre);
 
 			if (nombre == null || nombre.trim().isEmpty()) {
 				enviarErrorLogin("", "Nombre inválido");
