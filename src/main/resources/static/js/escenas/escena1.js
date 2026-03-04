@@ -37,6 +37,17 @@ class escena1 extends Phaser.Scene {
         
         this.crearNombreInput();
 
+        // Recalcular layout del input según el tamaño real del canvas (Scale.FIT)
+        this.aplicarLayoutNombreInput();
+
+        // Mantener el input responsivo ante cambios de tamaño/zoom/orientación
+        this._onWindowResize = () => this.aplicarLayoutNombreInput();
+        window.addEventListener('resize', this._onWindowResize);
+
+        // Respaldo: si Phaser emite resize
+        this._onPhaserResize = () => this.aplicarLayoutNombreInput();
+        this.scale.on('resize', this._onPhaserResize, this);
+
         // Botones grandes y centrados con estilo militar
         const botonStyle = {
             fontSize: '48px',
@@ -315,8 +326,6 @@ class escena1 extends Phaser.Scene {
 
     // inputs HTML
     crearNombreInput() {
-        const { width, height } = this.cameras.main;
-
         // Evitar inputs duplicados si la escena se reinicia sin limpiar bien
         this.eliminarInputsNombreGlobal();
 
@@ -326,15 +335,10 @@ class escena1 extends Phaser.Scene {
         this.nombreInput.id = 'nombre';
         this.nombreInput.placeholder = 'INGRESA TU NOMBRE';
         this.nombreInput.maxLength = 20;
+        // Estilos base (los tamaños/posiciones se calculan en aplicarLayoutNombreInput)
         this.nombreInput.style.cssText = `
             position: absolute;
-            left: 50%;
-            top: 45%;
-            width: 320px;
-            height: 32px;
-            transform: translate(-50%, -40px);
-            padding: 6px 10px;
-            font-size: 20px;
+            transform: translate(-50%, -50%);
             font-family: 'Cambria', 'Times New Roman', serif;
             color: #f0f7e0;
             background-color: rgba(10, 30, 10, 0.85);
@@ -348,6 +352,50 @@ class escena1 extends Phaser.Scene {
         document.body.appendChild(this.nombreInput);
 
         this.domElements = [this.nombreInput];
+
+        // Aplicar layout inicial
+        this.aplicarLayoutNombreInput();
+    }
+
+    clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    aplicarLayoutNombreInput() {
+        if (!this.nombreInput) {
+            return;
+        }
+
+        // En Scale.FIT, el tamaño interno es fijo (1920x1080) pero el canvas se escala en pantalla.
+        // Para un DOM input responsivo, usamos el tamaño real mostrado del canvas.
+        const canvas = this.game && this.game.canvas;
+        if (!canvas || !canvas.getBoundingClientRect) {
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const canvasWidth = rect.width || 0;
+        const canvasHeight = rect.height || 0;
+        if (canvasWidth <= 0 || canvasHeight <= 0) {
+            return;
+        }
+
+        const centerX = rect.left + canvasWidth / 2;
+        const centerY = rect.top + canvasHeight * 0.45;
+
+        const inputWidth = this.clamp(canvasWidth * 0.38, 220, 560);
+        const inputHeight = this.clamp(canvasHeight * 0.06, 28, 56);
+        const fontSize = this.clamp(canvasHeight * 0.035, 16, 28);
+
+        const paddingY = Math.round(this.clamp(inputHeight * 0.18, 4, 10));
+        const paddingX = Math.round(this.clamp(inputWidth * 0.04, 8, 18));
+
+        this.nombreInput.style.left = `${centerX}px`;
+        this.nombreInput.style.top = `${centerY}px`;
+        this.nombreInput.style.width = `${Math.round(inputWidth)}px`;
+        this.nombreInput.style.height = `${Math.round(inputHeight)}px`;
+        this.nombreInput.style.padding = `${paddingY}px ${paddingX}px`;
+        this.nombreInput.style.fontSize = `${Math.round(fontSize)}px`;
     }
 
     eliminarDomElements() {
@@ -423,6 +471,15 @@ class escena1 extends Phaser.Scene {
             window.conexionWS.desuscribir(this.canalPartida);
         }
         window.conexionWS.desconectar();
+
+        if (this._onWindowResize) {
+            window.removeEventListener('resize', this._onWindowResize);
+            this._onWindowResize = null;
+        }
+        if (this._onPhaserResize) {
+            this.scale.off('resize', this._onPhaserResize, this);
+            this._onPhaserResize = null;
+        }
 
         this.eliminarDomElements();
         this.eliminarInputsNombreGlobal();
