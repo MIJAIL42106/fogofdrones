@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -32,6 +33,8 @@ public class GameHandler {
 	
 	@Autowired
 	private Servicios servicios;
+	@Autowired
+	private SesionJugadores sesionJugadores;
 	private String jugador1 = null;
 	private String jugador2 = null;
 	
@@ -89,9 +92,10 @@ public class GameHandler {
 	//Los clientes envían mensajes a /app/accion
 	//Las respuestas se envían a /topic/game para que todos los suscritos las reciban
 	@MessageMapping("/accion")
-	public void handleAction(@Payload Map<String, Object> data) {
+	public void handleAction(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
 			String nombre = (String) data.get("nombre");
+			sesionJugadores.registrar(sessionId, nombre);
 
 			// Obtener la partida asociada a este jugador
 			Partida p = servicios.getPartidaJugador(nombre);
@@ -100,6 +104,24 @@ public class GameHandler {
 			System.out.println("accion: "+ accion);
 
 			switch (accion) {
+				case "ABANDONAR": {
+					if (p != null) {
+						String nombreNaval = p.getJugadorNaval().getNombre();
+						String nombreAereo = p.getJugadorAereo().getNombre();
+						Equipo ganador = nombre.equals(nombreNaval) ? Equipo.AEREO : Equipo.NAVAL;
+						p.finalizarPorAbandono(ganador);
+						String canal = getCanalPartida(p);
+						VoMensaje finMsg = VoMensaje.builder()
+								.tipoMensaje(5)
+								.evento("La partida ha terminado por abandono")
+								.nombre(ganador.toString())
+								.fasePartida(FasePartida.TERMINADO)
+								.build();
+						String finRespuesta = mapper.writeValueAsString(finMsg);
+						messagingTemplate.convertAndSend(canal, finRespuesta);
+						servicios.finalizarPartida(nombreNaval, nombreAereo);
+					}
+				} break;
 				case "GUARDAR": {
 					System.out.println("case GUARDAR");
 					if (p != null) {

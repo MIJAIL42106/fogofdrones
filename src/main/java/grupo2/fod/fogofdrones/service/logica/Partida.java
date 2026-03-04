@@ -27,6 +27,9 @@ public class Partida implements Serializable {
     private int turnosMuerteSubita;
     private boolean seMovio, disparo, recargo;
 
+    @JsonIgnore
+    private Equipo ganadorForzado;
+
     public Partida() {}
 
     public Partida(Jugador jugador1, Jugador jugador2){
@@ -459,7 +462,19 @@ public class Partida implements Serializable {
         fase = FasePartida.TERMINADO;
     }
 
+    /**
+     * Finaliza la partida por abandono de un jugador.
+     * Fuerza el ganador para que el cierre y el puntaje sean consistentes.
+     */
+    public void finalizarPorAbandono(Equipo ganador) {
+        this.ganadorForzado = ganador;
+        this.fase = FasePartida.TERMINADO;
+    }
+
     public Equipo getEquipoGanador() {
+        if (ganadorForzado != null) {
+            return ganadorForzado;
+        }
         Equipo ganador = Equipo.NINGUNO;
         if (cantDronesEquipo(Equipo.NAVAL) == 0) {
             ganador = Equipo.AEREO;

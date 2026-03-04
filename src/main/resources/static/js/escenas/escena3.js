@@ -100,6 +100,17 @@ class escena3 extends Phaser.Scene {
 
     create() {
         //alert(gameState.equipo + " - " + mensaje.nombre);
+        // Confirmación antes de recargar/cerrar mientras estás en partida.
+        // Nota: el texto personalizado no se muestra en navegadores modernos.
+        this.beforeUnloadHandler = (e) => {
+            if (mensaje.nombre && gameState.canalPartida && gameState.fase !== "TERMINADO") {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        };
+        window.addEventListener('beforeunload', this.beforeUnloadHandler);
+
         this.crearInterfaz();
         this.crearAnimaciones();
         //this.pantallaImpactos.play('impactoPortaA');
@@ -1105,6 +1116,11 @@ class escena3 extends Phaser.Scene {
     }
 
     shutdown() {
+        if (this.beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+            this.beforeUnloadHandler = null;
+        }
+
         this.eliminarDrones();
         if (this.tablero)
             this.tablero.destroy();

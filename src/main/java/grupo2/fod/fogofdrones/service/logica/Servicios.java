@@ -88,6 +88,9 @@ public class Servicios{
     public void finalizarPartida(String nombre1, String nombre2) {
         String clave = generarClave(nombre1, nombre2);
         Partida partida = partidas.get(clave);
+        if (partida == null) {
+            return;
+        }
         Equipo ganador = partida.getEquipoGanador();
         switch (ganador) {
             case NAVAL: {
