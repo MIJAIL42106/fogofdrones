@@ -15,11 +15,16 @@ import lombok.Setter;
 public class VoMensaje {
     private int tipoMensaje;
     private FasePartida fasePartida;
+    private int vidaPortaN;
+    private int vidaPortaA;
+    private int cantDronesN;
+    private int cantDronesA;
+    private int turnosMS;
     private Celda[] grilla;
     private String nombre;
     private Equipo equipo;
     private String evento;
-    private String canal;
+    private String canal;   // obtenemos ambos nombres para mostrarlos 
     private int turnosMuerteSubita;
     //cargar partida, interfaz grafica, animacion, codigo
 

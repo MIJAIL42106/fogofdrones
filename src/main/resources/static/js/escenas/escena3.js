@@ -8,7 +8,12 @@ gameState = {
     alto: 36,                                    // cantidad de celdas verticales
     tableroX: 50, 
     tableroY: 120,
-    miTurno: false,                   // no se usa
+    turno: "",                   
+    vidaPortaN: 3,
+    vidaPortaA: 6,
+    cantDronesN: 0,
+    cantDronesA: 0,
+    turnosMS: 0,
     clicks: 0,
     fase: "",
     equipo: "",
@@ -37,7 +42,7 @@ const mensaje = {
 };
 
 const tipoMensaje = Object.freeze({ // una forma de hacer tipo enumerado en js
-    //MUNICION: 0,  // no se usa 
+    DATOS: 0,  
     ESTADOPARTIDA: 1,
     GUARDADO: 2,
     ERROR: 3,
@@ -121,7 +126,7 @@ class escena3 extends Phaser.Scene {
                     gameState.escala , // - 1
                     gameState.escala , // - 1
                     gameState.niebla //0x000022    // cmabiar por nuestra niebla 
-                ).setAlpha(0.3);
+                ).setAlpha(0.3).setDepth(1);
 
                 //grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes).setDepth(1);
 
@@ -277,17 +282,15 @@ class escena3 extends Phaser.Scene {
     procesarMensaje(msg) {
         console.log("procesarMensaje - recibido:", msg.tipoMensaje, "canal:", gameState.canalPartida, "miNombre:", mensaje.nombre);
         switch (msg.tipoMensaje) {
-            // no necesario
-            /*
-            case tipoMensaje.MUNICION: { 
-                if (mensaje.nombre === msg.nombre) {
-                    this.textoMunicion.setText(msg.evento);
-                } 
-                /*
-                if (mensaje.nombre === msg.nombre) {
-                    gameState.equipo = msg.equipo.toString();
-                }
-            } break;*/
+            case tipoMensaje.DATOS: { 
+                gameState.vidaPortaN = msg.vidaPortaN;
+                gameState.vidaPortaA = msg.vidaPortaA;
+                gameState.cantDronesN = msg.cantDronesN;
+                gameState.cantDronesA = msg.cantDronesA;
+                gameState.turnosMS = msg.turnosMS;
+                gameState.turno = msg.equipo;
+                this.actualizarHUD();
+            } break;
             case tipoMensaje.ESTADOPARTIDA: {
                 console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
                 // actualizado de fase de partida
@@ -552,7 +555,11 @@ class escena3 extends Phaser.Scene {
         this.portadronN.setMask(this.mask);
         this.portadronA.setMask(this.mask); 
     }
-    
+
+    actualizarHUD() {
+        //this.vida
+    }
+
     // podria no pasarse el boton
     botonPasar(boton) {
         const p = boton;
@@ -598,6 +605,11 @@ class escena3 extends Phaser.Scene {
         // escenario muerte subita
         this.fondoMS = null;
         this.escenarioMS = null;
+
+        this.nombreNaval = this.add.text(gameState.tableroX - gameState.escala / 2, (gameState.tableroY- gameState.escala / 2) / 2 , "aaa", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(0, 0.5).setDepth(1);
+        this.nombreAereo = this.add.text(gameState.tableroX - gameState.escala / 2 + gameState.escala * gameState.ancho, (gameState.tableroY- gameState.escala / 2) / 2 , "bbbb", { fontFamily: 'Courier, monospace', fontSize: 40, color: '#ffffff' }).setOrigin(1, 0.5).setDepth(1);
+        this.barraVidaN = this.add.rectangle(gameState.tableroX - gameState.escala / 2 , (gameState.tableroY- gameState.escala / 2) / 2 , 480, 50, gameState.colorVerde).setOrigin(0,0.5);
+        this.barraVidaA = this.add.rectangle(gameState.tableroX - gameState.escala / 2 + gameState.escala * gameState.ancho, (gameState.tableroY- gameState.escala / 2) / 2, 480, 50, gameState.colorVerde).setOrigin(1,0.5);
 
         this.zonaDesp;
         const anchoZona = 15 * gameState.escala; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando // -gameState.escala / 2
@@ -929,7 +941,7 @@ class escena3 extends Phaser.Scene {
         gameState.alto = 36 ;                                    // cantidad de celdas verticales
         gameState.tableroX = 50 ; 
         gameState.tableroY = 60 ;
-        gameState.miTurno = false ;                   // no se usa
+        gameState.turno = "" ;                   // no se usa
         gameState.clicks = 0 ;
         gameState.fase = "" ;
         gameState.equipo = "" ;
