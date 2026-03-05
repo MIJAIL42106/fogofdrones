@@ -59,8 +59,10 @@ class escena3 extends Phaser.Scene {
     
                                                 // carga de assets
     preload() {                                 // fondo, escenario, tile, dronN, dronA, portaN, portaA, explosiones // ver cohete despues
-        this.load.image("Fondo",".//assets/fondos/FondoNaval.png");
+        this.load.image("Fondo",".//assets/fondos/FondoPartida.png");
+        this.load.image("FondoMS",".//assets/fondos/FondoMuerteSubita.png");
         this.load.image("Escenario",".//assets/escenarios/escenario1.png");
+        this.load.image("EscenarioMuerteSubita",".//assets/escenarios/escenario2.png");
         this.load.image("Mover",".//assets/fondos/mover.png");
         this.load.image("Atacar",".//assets/fondos/atacar.png");
         this.load.image("Recargar",".//assets/fondos/recargar.png");
@@ -74,6 +76,8 @@ class escena3 extends Phaser.Scene {
         this.load.spritesheet("DronN",".//assets/sprites/DronVerde-64x64x2.png",{frameWidth: 64, frameHeight: 64});
         this.load.spritesheet("DronA",".//assets/sprites/DronRojo-64x64x2.png",{frameWidth: 64, frameHeight: 64});
         this.load.spritesheet("Impactos",".//assets/sprites/Impactos-399x399x11x6.png",{frameWidth: 399, frameHeight: 399});
+        this.load.audio("MusicaPartida",".//assets/musica/Musica_Partida.mp3");
+        this.load.audio("MusicaMuerteSubita",".//assets/musica/Musica_Muerte_Subita.mp3");
     }
 
     create() {
@@ -90,11 +94,11 @@ class escena3 extends Phaser.Scene {
         this.crearInterfaz();
         this.crearAnimaciones();
         this.crearPortadrones();
-        this.crearTablero2();
+        this.crearTablero();
         this.conectarSTOMP();
     }
 
-    crearTablero2() {
+    crearTablero() {
         gameState.infoCelda = new Map();
         //this.rectGraphics = this.add.graphics();
 
@@ -287,6 +291,7 @@ class escena3 extends Phaser.Scene {
             case tipoMensaje.ESTADOPARTIDA: {
                 console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
                 // actualizado de fase de partida
+
                 gameState.fase = msg.fasePartida.toString();
                 if (gameState.fase !== "DESPLIEGUE") {
                     if ( !this.botonPasarActivo ) {
@@ -296,6 +301,27 @@ class escena3 extends Phaser.Scene {
                         }
                         this.botonPasar(this.desplegarBtn);
                         this.botonPasarActivo = true;
+                    }
+                    if (gameState.fase == "MUERTE_SUBITA") {
+                        if ( !this.muerteSubitaActiva ) {
+                            // intentar dejar creacuin en crearinterfaz
+                            this.escenarioMS = this.add.image(this.escenario.x, this.escenario.y, "EscenarioMuerteSubita" ).setOrigin(0, 0).setDepth(0);
+                            this.escenarioMS.setScale(1.163);
+                            this.fondoMS = this.add.image(this.fondo.x, this.fondo.y, "FondoMS").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
+                            this.fondoMS.setScale(1); 
+                            if (this.escenario && this.escenario.destroy) {
+                                this.escenario.destroy();
+                                this.escenario = null;
+                            }
+                            if (this.fondo && this.fondo.destroy) {
+                                this.fondo.destroy();
+                                this.fondo = null;
+                            }
+                            this.musica.stop();
+                            this.musicaMS.play({volume: 0.2});
+                            this.muerteSubitaActiva = true;
+                        }
+                        
                     }
                 }
                 // limpiado de mascara y drones
@@ -564,11 +590,14 @@ class escena3 extends Phaser.Scene {
 
     crearInterfaz() {
         // 960 y 540 podrian obtenerse de camara main
-        var fondo = this.add.image(960,540,"Fondo").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
-        fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
+        this.fondo = this.add.image(960,540,"Fondo").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
+        this.fondo.setScale(1);                              // seteo de escala de fondo, hecho a medida, escala 1
         // ver si se puede usar tableroX y tableroY para posicion de escenario
-        var escenario = this.add.image(gameState.tableroX - gameState.escala/2, gameState.tableroY - gameState.escala/2,"Escenario").setOrigin(0, 0).setDepth(0);
-        escenario.setScale(1.163);
+        this.escenario = this.add.image(gameState.tableroX - gameState.escala/2, gameState.tableroY - gameState.escala/2,"Escenario").setOrigin(0, 0).setDepth(0);
+        this.escenario.setScale(1.163);
+        // escenario muerte subita
+        this.fondoMS = null;
+        this.escenarioMS = null;
 
         this.zonaDesp;
         const anchoZona = 15 * gameState.escala; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando // -gameState.escala / 2
@@ -600,7 +629,13 @@ class escena3 extends Phaser.Scene {
         var recargarBtn = this.add.image(posXBtn,posY,"Recargar").setScale(gameState.escalaBtn).setDepth(0).setInteractive({ useHandCursor: true });
         posY += tamBtn + sep;
         var guardarBtn = this.add.image(posXBtn,posY,"Guardar").setScale(gameState.escalaBtn).setDepth(0).setInteractive({ useHandCursor: true });
+        
         this.botonPasarActivo = false;
+        this.muerteSubitaActiva = false;
+
+        this.musica = this.sound.add("MusicaPartida",{ loop: true });
+        this.musica.play({volume: 0.2});
+        this.musicaMS = this.sound.add("MusicaMuerteSubita",{ loop: true });
 
         ///////////////////////////////////////////////////////////////// mover despues
         this.pantallaImpactos = this.add.sprite(posY , 850 ,"Impactos").setScale(1).setDepth(2);

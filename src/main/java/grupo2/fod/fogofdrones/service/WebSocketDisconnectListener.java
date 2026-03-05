@@ -138,7 +138,7 @@ public class WebSocketDisconnectListener {
             }, 15, TimeUnit.SECONDS);
 
             LOGGER.info("Partida finalizada por abandono (con gracia). Desconectado='{}', ganador={}", nombre, ganador);
-        }, 3, TimeUnit.SECONDS);
+        }, 10, TimeUnit.SECONDS);
 
         abandonoPendientePorJugador.put(nombre, futuro);
     }

@@ -16,6 +16,9 @@ class escena1 extends Phaser.Scene {
     }
     preload() {
         this.load.image("FondoMenu",".//assets/fondos/fondo_lobby.png");
+        this.load.image("AudioAct",".//assets/fondos/Audio_activado.png");
+        this.load.image("AudioMute",".//assets/fondos/Audio_muteado.png");
+        this.load.audio("MusicaMenu",".//assets/musica/Musica_Menu_Principal.mp3");
     }  
 
     create() { 
@@ -35,6 +38,9 @@ class escena1 extends Phaser.Scene {
         this.buscandoPartida = false;
         this.cargandoPartida = false;
         
+        this.musica = this.sound.add("MusicaMenu",{ loop: true });
+        this.musica.play({volume: 0.2});
+
         this.crearNombreInput();
 
         // Recalcular layout del input según el tamaño real del canvas (Scale.FIT)
@@ -314,6 +320,7 @@ class escena1 extends Phaser.Scene {
         this.eliminarInputsNombreGlobal();
 
         this.shutdown();
+        this.musica.stop();
         this.scene.start('partida', { nombre, equipo: gameState.equipo, canal: this.canalPartida });
     }
 
