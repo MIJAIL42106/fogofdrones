@@ -1,6 +1,6 @@
 
 class ConexionWS {  // hacer archivo config con url
-    constructor(url = 'http://localhost:8080/game') {
+    constructor(url = 'http://localhost:8080/game') {   // http://26.169.248.78:8080/game
         this.url = url;
         this.stompClient = null;
         this.connected = false;

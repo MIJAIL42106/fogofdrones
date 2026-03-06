@@ -324,13 +324,6 @@ class escena1 extends Phaser.Scene {
         this.scene.start('partida', { nombre, equipo: gameState.equipo, canal: this.canalPartida });
     }
 
-    // La conexión y suscripción ahora se maneja con ConexionWS en create()
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Enviar mensaje usando ConexionWS // no se usa
-    enviarMensage(data) {
-        window.conexionWS.enviar('/app/login', data);
-    }
-
     // inputs HTML
     crearNombreInput() {
         // Evitar inputs duplicados si la escena se reinicia sin limpiar bien
@@ -372,8 +365,7 @@ class escena1 extends Phaser.Scene {
             return;
         }
 
-        // En Scale.FIT, el tamaño interno es fijo (1920x1080) pero el canvas se escala en pantalla.
-        // Para un DOM input responsivo, usamos el tamaño real mostrado del canvas.
+        // DOM input responsivo, tamaño real del canvas.
         const canvas = this.game && this.game.canvas;
         if (!canvas || !canvas.getBoundingClientRect) {
             return;

@@ -1,11 +1,8 @@
 package grupo2.fod.fogofdrones.service;
 
-// ver como adaptar a servicios usando varias partidas
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -22,11 +19,9 @@ import grupo2.fod.fogofdrones.service.logica.Posicion;
 import grupo2.fod.fogofdrones.service.logica.Servicios;
 import grupo2.fod.fogofdrones.service.valueObject.VoMensaje;
 
-// Controlador que administra las conexiones STOMP para el juego
+// controlador que administra conexiones STOMP a el juego
 @Controller
 public class GameHandler {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(GameHandler.class);
 	
 	@Autowired
 	private SimpMessagingTemplate messagingTemplate;
@@ -38,27 +33,20 @@ public class GameHandler {
 	private String jugador1 = null;
 	private String jugador2 = null;
 
-	/**
-	 * Limpia cualquier estado de espera (lobby o carga) asociado a un jugador.
-	 * Se usa desde el listener de disconnect para evitar "jugadores fantasma".
-	 */
 	public synchronized void limpiarColasPorDesconexion(String nombre) {
 		if (nombre == null || nombre.trim().isEmpty()) {
 			return;
 		}
 		if (nombre.equals(jugador1)) {
-			LOGGER.info("Limpiando cola lobby: removiendo jugador1='{}' por desconexión", nombre);
 			jugador1 = null;
 		}
 		if (nombre.equals(jugador2)) {
-			LOGGER.info("Limpiando cola lobby: removiendo jugador2='{}' por desconexión", nombre);
 			jugador2 = null;
 		}
 
 		// Limpieza de cola de carga por pareja.
 		String clave = clavePendientePorJugador.remove(nombre);
 		if (clave != null) {
-			LOGGER.info("Limpiando cola carga: removiendo '{}' (clave={}) por desconexión", nombre, clave);
 			cargaPendientePorClave.remove(clave, nombre);
 		}
 		// Defensivo: si el índice inverso se desincronizó, removerlo igual.
@@ -71,31 +59,23 @@ public class GameHandler {
 	public void handleActionMenu(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
 			String nombre = (String) data.get("nombre");
-			LOGGER.info("Login solicitado por '{}'", nombre);
 			sesionJugadores.registrar(sessionId, nombre);
 
 			if (nombre == null || nombre.trim().isEmpty()) {
 				enviarErrorLogin("", "Nombre inválido"); // "Nombre inválido"
-				LOGGER.warn("Login rechazado: nombre vacío o nulo");
 				return;
 			}
 
 			if (servicios.existePartida(nombre)) {
 				enviarErrorLogin(nombre, "El jugador ya está en una partida activa"); //"El jugador ya está en una partida activa"
-				LOGGER.warn("Login rechazado para '{}': ya tiene partida activa", nombre);
 			} else {
 				handleCrearJugador(nombre);
 			}
 		} catch (Exception e) {
-			LOGGER.error("Error procesando login", e);
+			e.printStackTrace();
 		}
 	}
 
-	/**
-	 * Permite a un jugador cancelar la búsqueda de partida en el lobby.
-	 * Si el jugador estaba registrado como "jugador1" (esperando rival),
-	 * se limpia ese estado para que no se lo empareje más.
-	 */
 	@MessageMapping("/cancelar-login")
 	public synchronized void handleCancelarLogin(@Payload Map<String, Object> data) {
 		try {
@@ -104,21 +84,16 @@ public class GameHandler {
 				return;
 			}
 			if (nombre.equals(jugador1)) {
-				LOGGER.info("Cancelando búsqueda de partida para '{}' (jugador1)", nombre);
 				jugador1 = null;
 			} else if (nombre.equals(jugador2) && !servicios.existePartida(nombre)) {
 				// Caso defensivo: si por algún motivo quedó como jugador2 sin partida creada
-				LOGGER.info("Cancelando búsqueda de partida para '{}' (jugador2)", nombre);
 				jugador2 = null;
 			}
 		} catch (Exception e) {
-			LOGGER.error("Error procesando cancelar-login", e);
+			e.printStackTrace();
 		}
 	}
 	
-	//Endpoint principal que maneja todas las acciones del juego
-	//Los clientes envían mensajes a /app/accion
-	//Las respuestas se envían a /topic/game para que todos los suscritos las reciban
 	@MessageMapping("/accion")
 	public void handleAction(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
@@ -129,7 +104,6 @@ public class GameHandler {
 			Partida p = servicios.getPartidaJugador(nombre);
 			// accion fuera de turno para procesar solicitud de guardado
 			String accion = (String) data.get("accion");
-			System.out.println("accion: "+ accion);
 
 			switch (accion) {
 				case "ABANDONAR": {
@@ -151,33 +125,26 @@ public class GameHandler {
 					}
 				} break;
 				case "GUARDAR": {
-					System.out.println("case GUARDAR");
 					if (p != null) {
 						handleGuardar(nombre, p);
 					}
-					} break;
+				} break;
 				case "RECHAZAR": {
-					System.out.println("case RECHAZAR");
 					if (p != null) {
 						handleRechazar(nombre, p);
 					}
-				 	} break;
+				} break;
 				case "ACEPTAR":{
-					System.out.println("case ACEPTAR");
 					if (p != null) {
 						handleAceptar(nombre, p);
 					}
-					} break;
+				} break;
 				case "ACTUALIZAR": {
-					System.out.println("case ACTUALIZAR");
 					if (p != null) {
 						String respuesta = mensajeRetorno(p);
 						String canal = getCanalPartida(p);
 						messagingTemplate.convertAndSend(canal, respuesta);
-						LOGGER.info("Estado actualizado enviado para jugador '{}'", nombre);
 
-						// Si la partida ya terminó (por abandono u otra causa) y este jugador se conectó tarde,
-						// reenviar FINALIZACION SOLO si fue por abandono (disconnect) recientemente.
 						if (p.getFasePartida() == FasePartida.TERMINADO) {
 							try {
 								String nombreNaval = p.getJugadorNaval().getNombre();
@@ -197,13 +164,10 @@ public class GameHandler {
 									servicios.finalizarPartida(nombreNaval, nombreAereo);
 								}
 							} catch (Exception ex) {
-								LOGGER.error("Error reenviando FINALIZACION tras ACTUALIZAR (jugador='{}')", nombre, ex);
 							}
 						}
-					} else {
-						LOGGER.warn("ACTUALIZAR: No se encontró partida para jugador '{}'", nombre);
 					}
-					} break;
+				} break;
 				default: 
 					if (p != null && p.esMiTurno(nombre)) {
 						// Si es el turno del jugador, procesar la acción
@@ -213,16 +177,16 @@ public class GameHandler {
 							switch (accion) {
 								case "MOVER":
 									handleMover(data, p);
-									break;
+								break;
 								case "ATACAR":
 									handleAtacar(data, p);
-									break;
+								break;
 								case "RECARGAR":
 									handleRecargar(data, p);
-									break;
+								break;
 								case "PASAR":
 									p.terminarTurno();
-									break;
+								break;
 							}
 						}
 						
@@ -236,7 +200,7 @@ public class GameHandler {
                             servicios.finalizarPartida(nombreNaval, nombreAereo);
                             Equipo ganador = p.getEquipoGanador();
                             VoMensaje finMsg = VoMensaje.builder()
-                                .tipoMensaje(5) // Nuevo tipo para finalización
+                                .tipoMensaje(5) // finalización
                                 .evento("La partida ha terminado")
                                 .nombre(ganador != Equipo.NINGUNO ? ganador.toString() : "Empate")
                                 .fasePartida(FasePartida.TERMINADO)
@@ -250,48 +214,42 @@ public class GameHandler {
 							.tipoMensaje(3)
 							.nombre(nombre)
 							.evento("No es tu turno")
-							.build();//new VoMensaje(nombre, 3); // "No es tu turno"
+							.build();
 						String respuesta = mapper.writeValueAsString(mensajeError);
 						String canal = getCanalPartida(p);
 						messagingTemplate.convertAndSend(canal, respuesta);
 					}
 				break;	
 			}
-			
 		} catch (Exception e) {
-			//Error procesando acción: 
+			e.printStackTrace();
 		}
 	}
 	
-	
 	//Maneja la creación de jugadores y partida
-	 
 	private synchronized void handleCrearJugador(String nombre) {
 		try {
 			if (jugador1 == null) {
 				jugador1 = nombre;
-				LOGGER.info("Jugador '{}' asignado como jugador1 (NAVAL)", nombre);
-				
+
 				// Notificar al jugador 1 que es NAVAL
 				VoMensaje mensaje = VoMensaje.builder()	// ver escena 1
 					.nombre(nombre)
 					.equipo(Equipo.NAVAL)
-					.build();//new VoMensaje(nombre, Equipo.NAVAL);
+					.build();
 				String respuesta = mapper.writeValueAsString(mensaje);
 				messagingTemplate.convertAndSend("/topic/login", respuesta);
 				
 			} else if (jugador2 == null && !jugador1.equals(nombre)) {
 				jugador2 = nombre;
-				LOGGER.info("Jugador '{}' asignado como jugador2 (AEREO)", nombre);
 				servicios.crearPartida(jugador1, jugador2);
 				String clave = servicios.generarClave(jugador1, jugador2);
-				LOGGER.info("Partida creada con clave '{}'", clave);
 
 				// Notificar al jugador 2 que es AEREO
 				VoMensaje mensaje = VoMensaje.builder()	// ver escena 1
 					.nombre(nombre)
 					.equipo(Equipo.AEREO)
-					.build();//new VoMensaje(nombre, Equipo.AEREO);
+					.build();
 				String respuesta = mapper.writeValueAsString(mensaje);
 				messagingTemplate.convertAndSend("/topic/login", respuesta);
 				
@@ -301,8 +259,7 @@ public class GameHandler {
 					.nombre(jugador1)
 					.equipo(Equipo.NAVAL)
 					.canal(canalPartida)
-					.build();//new VoMensaje(jugador1, Equipo.NAVAL);
-				//mensajeJugador1.setCanal(canalPartida);
+					.build();
 				String respuestaJugador1 = mapper.writeValueAsString(mensajeJugador1);
 				messagingTemplate.convertAndSend("/topic/partida-lista", respuestaJugador1);
 				
@@ -310,8 +267,7 @@ public class GameHandler {
 					.nombre(nombre)
 					.equipo(Equipo.AEREO)
 					.canal(canalPartida)
-					.build();//new VoMensaje(nombre, Equipo.AEREO);
-				//mensajeJugador2.setCanal(canalPartida);
+					.build();
 				String respuestaJugador2 = mapper.writeValueAsString(mensajeJugador2);
 				messagingTemplate.convertAndSend("/topic/partida-lista", respuestaJugador2);
 				
@@ -323,14 +279,13 @@ public class GameHandler {
 				// Enviar estado inicial del juego a todos los jugadores
 				// Registrar listener para mensajes de partida -> enviar por STOMP en canal específico
 				Partida p = servicios.getPartidaJugador(temp2);
-				if (p != null) {/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				if (p != null) {
 					String canalInicio = getCanalPartida(p);
 					p.setMensajeListener((vo) -> {
 						try {
 							String mensajeVo = mapper.writeValueAsString(vo);
 							messagingTemplate.convertAndSend(canalInicio, mensajeVo);
 						} catch (Exception ex) {
-							LOGGER.error("Error enviando VoMensaje de partida", ex);
 						}
 					});
 					String estadoInicial = mensajeRetorno(p);
@@ -340,10 +295,9 @@ public class GameHandler {
 				jugador1 = null;
 				jugador2 = null;
 				enviarErrorLogin(nombre, "No se pudo asignar jugador. Intenta nuevamente"); // "No se pudo asignar jugador. Intenta nuevamente"
-				LOGGER.warn("Login no asignado para '{}'. Estado actual jugador1='{}', jugador2='{}'", nombre, jugador1, jugador2);
 			}
 		} catch (Exception e) {
-			LOGGER.error("Error al crear jugador '{}'", nombre, e);
+			e.printStackTrace();
 			enviarErrorLogin(nombre, "Error interno al crear jugador"); // "Error interno al crear jugador"
 		}
 	}
@@ -354,16 +308,14 @@ public class GameHandler {
 				.tipoMensaje(3)
 				.nombre(nombre)
 				.evento(error)
-				.build();	///new VoMensaje(nombre, error);
+				.build();
 			String respuesta = mapper.writeValueAsString(mensajeError);
 			messagingTemplate.convertAndSend("/topic/login", respuesta);
 		} catch (Exception ex) {
-			LOGGER.error("Error enviando mensaje de error de login para '{}'", nombre, ex);
 		}
 	}
 		
 	//Maneja el despliegue de drones en la fase inicial
-	 
 	public void handleDesplegar(Map<String, Object> data, Partida p) {
 		int x = (int) data.get("xi");
 		int y = (int) data.get("yi");
@@ -373,7 +325,6 @@ public class GameHandler {
 	}
 
 	//Maneja el movimiento de drones
-	
 	public void handleMover(Map<String, Object> data, Partida p) {
 		int xi = (int) data.get("xi");
 		int yi = (int) data.get("yi");
@@ -386,8 +337,7 @@ public class GameHandler {
 	}
 
 	
-	//aneja los ataques entre drones
-	
+	//maneja los ataques entre drones
 	public void handleAtacar(Map<String, Object> data, Partida p) {
 		int xi = (int) data.get("xi");
 		int yi = (int) data.get("yi");
@@ -401,8 +351,6 @@ public class GameHandler {
 
 	
 	//Maneja la recarga de munición
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/// revisar xi yi o xf yf y ver que mas cambia
 	public void handleRecargar(Map<String, Object> data, Partida p) {
 		int x = (int) data.get("xf");
 		int y = (int) data.get("yf");
@@ -410,39 +358,6 @@ public class GameHandler {
 		
 		p.recargarMunicion(pos);
 	}
-	/* 
-	// pasamos nombre que ya lo tenemos de antes asi no tenemos que guardarlo nuevamente
-	public void handleMunicion(Map<String, Object> data, String nombre, Partida p) {
-		System.out.println("municion");
-		int x = (int) data.get("xf");
-		int y = (int) data.get("yf");
-		Posicion pos = new Posicion(x, y);
-		Equipo equipo = null;
-		int muniTotal = 0;
-		if (nombre.equals(p.getJugadorAereo().getNombre())){
-			equipo = Equipo.AEREO;
-			muniTotal = 1;
-		} else {
-			equipo = Equipo.NAVAL;
-			muniTotal = 2;
-		}
-		//System.out.println(nombre +" - "+equipo+" - "+muniTotal);
-		int municion = p.obtenerMunicion(pos, equipo);
-		//System.out.println( municion + "/" + muniTotal);
-
-		try {
-			VoMensaje mensajeMunicion = VoMensaje.builder()
-				.tipoMensaje(0)
-				.nombre(nombre)
-				.evento( municion + "/" + muniTotal)//String.valueOf(municion))	
-				.build(); 
-			String respuesta = mapper.writeValueAsString(mensajeMunicion);
-			String canal = getCanalPartida(p);
-			messagingTemplate.convertAndSend(canal, respuesta);
-		} catch (Exception e) {
-
-		}
-	}*/
 
 	public void handleGuardar(String solicitante, Partida p) {
 		String nombre = null;
@@ -473,22 +388,20 @@ public class GameHandler {
 				return;
 			}
 
-			//VoMensaje mensajeError = new VoMensaje(nombre, 6); // "solicitud de guardado"
 			VoMensaje mensajeGuardado = VoMensaje.builder()
 				.tipoMensaje(2)
 				.nombre(nombre)
 				.evento("SOLICITUD")	// "solicitud de guardado"
-				.build(); // "solicitud de guardado"
+				.build(); 
 			String respuesta = mapper.writeValueAsString(mensajeGuardado);
 			String canal = getCanalPartida(p);
 			messagingTemplate.convertAndSend(canal, respuesta);
 		} catch (Exception e) {
-
+			e.printStackTrace();
 		}
 	}
 
 	public void handleRechazar(String nombre, Partida p) {
-		System.out.println("rechazar guardado");
 		String solicitante = null;
 		if ( nombre.equals(p.getJugadorAereo().getNombre()) ) {
 			solicitante = p.getJugadorNaval().getNombre();
@@ -500,17 +413,16 @@ public class GameHandler {
 				.tipoMensaje(2)
 				.nombre(solicitante)
 				.evento("RECHAZADA")	//"solicitud de guardado rechazada"
-				.build();//new VoMensaje(solicitante, 7); // "solicitud de guardado rechazada"
+				.build();
 			String respuesta = mapper.writeValueAsString(mensajeGuardado);
 			String canal = getCanalPartida(p);
-			messagingTemplate.convertAndSend(canal, respuesta);	// antes "/topic/game"
+			messagingTemplate.convertAndSend(canal, respuesta);
 		} catch (Exception e) {
-
+			e.printStackTrace();
 		}
 	}
 
 	public void handleAceptar(String nombre, Partida p) {
-		System.out.println("aceptar guardado");
 		String solicitante;
 		String otroJugador;
 		if ( nombre.equals(p.getJugadorAereo().getNombre()) ) {
@@ -561,19 +473,17 @@ public class GameHandler {
 			messagingTemplate.convertAndSend(canal, respuestaSolicitante);
 			messagingTemplate.convertAndSend(canal, respuestaAceptador);
 		} catch (Exception e) {
-
+			e.printStackTrace();
 		}
 	}
 
-	
 	//Genera el mensaje de retorno con el estado actual del juego
-	
 	public String mensajeRetorno(Partida p) {
 		String t = null;
 		try {
 			// Crear VoMensaje con la fase y la grilla completa
 			VoMensaje mensaje = VoMensaje.builder()
-				.tipoMensaje(1) //.tipoMensaje(0)
+				.tipoMensaje(1) //
 				.fasePartida(p.getFasePartida())
 				.vidaPortaN(p.getPortaDronesNaval().getVida())
 				.vidaPortaA(p.getPortaDronesAereo().getVida())
@@ -582,25 +492,15 @@ public class GameHandler {
 				.turnosMuerteSubita(p.getTurnosMuerteSubita())
 				.equipo(p.getTurno())
 				.grilla(p.getTablero().getGrillaLineal())
-				.build(); //new VoMensaje(p.getFasePartida(), p.getTablero());
+				.build(); 
 			t = mapper.writeValueAsString(mensaje);
-			
-			// DEBUG: Verificar qué se está enviando
-			LOGGER.info("[DEBUG MSG] Enviando estado - Fase: {}, Grilla tamaño:", 
-				p.getFasePartida()
-				);//p.getTablero().getGrillaLineal().size()
 		} catch (Exception e) {
-			LOGGER.error("[DEBUG MSG] Error generando mensaje de retorno", e);
 			e.printStackTrace();
 		}
 		return t;
 	}
 
-	
-	/**
-	 * Construye el canal de STOMP asociado a una partida concreta.
-	 * Formato: /topic/{jugadorNaval}-{jugadorAereo}
-	 */
+	//canal STOMP asociado a una partida /topic/{jugadorNaval}-{jugadorAereo}
 	private String getCanalPartida(Partida p) {
 		if (p == null || p.getJugadorNaval() == null || p.getJugadorAereo() == null) {
 			return "/topic/game"; // fallback
@@ -609,17 +509,12 @@ public class GameHandler {
 		String aer = p.getJugadorAereo().getNombre();
 		return "/topic/" + nav + "-" + aer;
 	}
-
-	
 	// Estado para carga de partida guardada (cola por pareja)
 	// clave = "{naval}-{aereo}", valor = jugador que está esperando
 	private final Map<String, String> cargaPendientePorClave = new ConcurrentHashMap<>();
 	// índice inverso para cancelar rápido
 	private final Map<String, String> clavePendientePorJugador = new ConcurrentHashMap<>();
 
-	/**
-	 * Permite cancelar la espera para cargar partida guardada.
-	 */
 	@MessageMapping("/cancelar-cargar")
 	public void handleCancelarCargar(@Payload Map<String, Object> data) {
 		try {
@@ -629,11 +524,10 @@ public class GameHandler {
 			}
 			String clave = clavePendientePorJugador.remove(nombre);
 			if (clave != null) {
-				LOGGER.info("Cancelando espera de carga para '{}' (clave={})", nombre, clave);
 				cargaPendientePorClave.remove(clave, nombre);
 			}
 		} catch (Exception e) {
-			LOGGER.error("Error procesando cancelar-cargar", e);
+			e.printStackTrace();
 		}
 	}
 
@@ -641,7 +535,6 @@ public class GameHandler {
 	public void handleCargar(@Payload Map<String, Object> data, @Header("simpSessionId") String sessionId) {
 		try {
 			String nombre = (String) data.get("nombre");
-			LOGGER.info("Cargar solicitado por '{}'", nombre);
 			sesionJugadores.registrar(sessionId, nombre);
 
 			if (nombre == null || nombre.trim().isEmpty()) {
@@ -665,8 +558,8 @@ public class GameHandler {
 						.build();
 					String respuesta = mapper.writeValueAsString(mensajeError);
 					messagingTemplate.convertAndSend("/topic/login", respuesta);
-				} catch (Exception ex) {
-					LOGGER.error("Error enviando mensaje de error de carga para '{}': {}", nombre, ex.getMessage());
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 				return;
 			}
@@ -685,7 +578,6 @@ public class GameHandler {
 			String esperando = cargaPendientePorClave.putIfAbsent(clave, nombre);
 			if (esperando == null) {
 				clavePendientePorJugador.put(nombre, clave);
-				LOGGER.info("Jugador '{}' esperando para cargar partida guardada (clave={})", nombre, clave);
 				return;
 			}
 			if (esperando.equals(nombre)) {
@@ -697,26 +589,17 @@ public class GameHandler {
 			cargaPendientePorClave.remove(clave);
 			clavePendientePorJugador.remove(esperando);
 			clavePendientePorJugador.remove(nombre);
-			LOGGER.info("Pareja completa para cargar (clave={}) -> {} y {}", clave, esperando, nombre);
 
 			Partida partidaCargada = servicios.cargarPartida(jugadorNaval, jugadorAereo);
 			if (partidaCargada == null) {
-				LOGGER.error("ERROR: No se pudo cargar la partida para clave {} ({} vs {})", clave, jugadorNaval, jugadorAereo);
 				enviarErrorLogin(esperando, "Error al cargar la partida");
 				enviarErrorLogin(nombre, "Error al cargar la partida");
 				return;
 			}
-
 				partidaCargada.actualizarTablero();
 				partidaCargada.actualizarVision();
 				
 				String canalPartida = getCanalPartida(partidaCargada);
-
-				// DEBUG: Verificar el estado de la partida cargada
-				LOGGER.info("[DEBUG CARGA] Partida cargada - Fase: {}, Drones N: {}, Drones A: {}", 
-					partidaCargada.getFasePartida(),
-					partidaCargada.cantDronesEquipo(Equipo.NAVAL),
-					partidaCargada.cantDronesEquipo(Equipo.AEREO));
 
 				// Notifica a ambos jugadores que la partida está lista para cargar
 				VoMensaje mensajeJugador1 = VoMensaje.builder()
@@ -734,15 +617,6 @@ public class GameHandler {
 					.build();
 				String respuestaJugador2 = mapper.writeValueAsString(mensajeJugador2);
 				messagingTemplate.convertAndSend("/topic/cargar-lista", respuestaJugador2);
-				System.out.println(partidaCargada.getJugadorNaval().getNombre() + " - " + partidaCargada.getJugadorAereo().getNombre());
-
-				// Nota: El estado inicial será enviado cuando los clientes se suscriban 
-				// y envíen un mensaje ACTUALIZAR. Esto sincroniza correctamente a ambos jugadores.
-				LOGGER.info("Partida cargada: {} vs {}. Esperando ACTUALIZAR de los clientes.", 
-					partidaCargada.getJugadorNaval().getNombre(), 
-					partidaCargada.getJugadorAereo().getNombre());
-					
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 				String canalInicio = getCanalPartida(partidaCargada);
 				partidaCargada.setMensajeListener((vo) -> {
@@ -750,27 +624,24 @@ public class GameHandler {
 						String mensajeVo = mapper.writeValueAsString(vo);
 						messagingTemplate.convertAndSend(canalInicio, mensajeVo);
 					} catch (Exception ex) {
-						LOGGER.error("Error enviando VoMensaje de partida", ex);
 					}
 				});
 				String estadoInicial = mensajeRetorno(partidaCargada);
 				messagingTemplate.convertAndSend(canalInicio, estadoInicial);
 		} catch (Exception e) {
-			LOGGER.error("Error al cargar partida '{}'", data.get("nombre"), e);
+			e.printStackTrace();
 			enviarErrorLogin((String) data.get("nombre"), "Error interno al cargar partida");
 		}
 	}
 
 	@MessageMapping("/ranking")
 	public void handleRanking(@Payload Map<String, Object> data) {
-		System.out.println("ranking");
 		String t = null;
 		try {
 			t = mapper.writeValueAsString(servicios.getRanking());
 			messagingTemplate.convertAndSend("/topic/ranking", t );
 		} catch (Exception e) {
-
+			e.printStackTrace();
 		}
-
 	}	
 }

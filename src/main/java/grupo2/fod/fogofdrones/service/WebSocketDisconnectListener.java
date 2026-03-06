@@ -7,8 +7,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -25,8 +23,6 @@ import grupo2.fod.fogofdrones.service.valueObject.VoMensaje;
 
 @Component
 public class WebSocketDisconnectListener {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketDisconnectListener.class);
 
     private final SesionJugadores sesionJugadores;
     private final Servicios servicios;
@@ -67,19 +63,17 @@ public class WebSocketDisconnectListener {
             return;
         }
 
-
         // Si no estaba en partida, puede estar esperando en lobby/carga.
         // Limpiar inmediatamente para que nadie se empareje con un "fantasma".
         Partida partidaActual = servicios.getPartidaJugador(nombre);
         if (partidaActual == null) {
             try {
                 gameHandler.limpiarColasPorDesconexion(nombre);
-            } catch (Exception ex) {
-                LOGGER.error("Error limpiando colas por desconexión (jugador='{}')", nombre, ex);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             return;
         }
-
 
         // Gracia: si es un refresh, el jugador suele reconectar enseguida.
         // Programamos el abandono y lo cancelamos si el jugador vuelve a tener sesión activa.
@@ -123,8 +117,8 @@ public class WebSocketDisconnectListener {
                         .fasePartida(FasePartida.TERMINADO)
                         .build();
                 messagingTemplate.convertAndSend(canal, mapper.writeValueAsString(finMsg));
-            } catch (Exception ex) {
-                LOGGER.error("Error enviando finalización por abandono (canal={})", canal, ex);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
             // No finalizar y eliminar inmediatamente: el rival puede aún no haberse suscrito.
@@ -132,12 +126,11 @@ public class WebSocketDisconnectListener {
             CLEANUP_EXECUTOR.schedule(() -> {
                 try {
                     servicios.finalizarPartida(nombreNaval, nombreAereo);
-                } catch (Exception ex) {
-                    LOGGER.error("Error en limpieza diferida de partida por abandono {} vs {}", nombreNaval, nombreAereo, ex);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }, 15, TimeUnit.SECONDS);
 
-            LOGGER.info("Partida finalizada por abandono (con gracia). Desconectado='{}', ganador={}", nombre, ganador);
         }, 10, TimeUnit.SECONDS);
 
         abandonoPendientePorJugador.put(nombre, futuro);

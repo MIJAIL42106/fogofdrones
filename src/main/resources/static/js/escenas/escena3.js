@@ -1,11 +1,11 @@
 gameState = {
-    colorVerde: 0xaaffaa,                       //
-    colorRojo: 0xffaaaa,                        //
-    colorSelec: 0x7cff89,                        //
+    colorVerde: 0xaaffaa,                           //
+    colorRojo: 0xffaaaa,                            //
+    colorSelec: 0x7cff89,                           //
     niebla: 0x334455,
     bordes: 0xffffff,
-    ancho: 64,                                  // cantidad de celdas horizontales
-    alto: 36,                                    // cantidad de celdas verticales
+    ancho: 64,                                      // cantidad de celdas horizontales
+    alto: 36,                                       // cantidad de celdas verticales
     tableroX: 50, 
     tableroY: 120,
     turno: "",                   
@@ -18,18 +18,16 @@ gameState = {
     fase: "",
     equipo: "",
     canalPartida: "",
-    drones: [], // [{}] ?
+    drones: [],
     portaNX: 0,
     portaNY: 35,
     portaAX: 63,
     portaAY: 0,
     anchoPorta: 4,
     altoPorta: 6,
-    escala: 26,//22.36, // 1.16
-    tamCelda: 23,               // ver que tan necesario es teniendo escala
+    escala: 26,
     solicitandoGuardado: false,
     escalaBtn: 2 
-    //infoCelda
 }; 
 
 const mensaje = {
@@ -42,7 +40,6 @@ const mensaje = {
 };
 
 const tipoMensaje = Object.freeze({ // una forma de hacer tipo enumerado en js
-    //DATOS: 0,  
     ESTADOPARTIDA: 1,
     GUARDADO: 2,
     ERROR: 3,
@@ -88,7 +85,6 @@ class escena3 extends Phaser.Scene {
     }
 
     create() {
-        //alert(gameState.equipo + " - " + mensaje.nombre);
         this.beforeUnloadHandler = (e) => {
             if (mensaje.nombre && gameState.canalPartida && gameState.fase !== "TERMINADO") {
                 e.preventDefault();
@@ -107,41 +103,28 @@ class escena3 extends Phaser.Scene {
 
     crearTablero() {
         gameState.infoCelda = new Map();
-        //this.rectGraphics = this.add.graphics();
 
         for (let j = 0; j < gameState.alto; j++) {
             for (let i = 0; i < gameState.ancho; i++) {
-                const clave = i + ',' + j ; //`${i},${j}`;
+                const clave = i + ',' + j ;
                 const xAbs = gameState.tableroX + i * gameState.escala;
                 const yAbs = gameState.tableroY + j * gameState.escala;
 
-                // Rectángulo base del tablero (siempre visible)
-                //this.rectGraphics.fillStyle(0x1a3a5c);
-                //this.rectGraphics.fillRect(xAbs, yAbs, gameState.escala - 1, gameState.escala - 1);
-
-                // Rectángulo de niebla de guerra, por encima del fondo
-                // setAlpha(0) = sin niebla, setAlpha(0.7) = con niebla
                 // ver si hacerlo this o fijarse si existe antes de crearlo
                 const vision = this.add.rectangle(
-                    xAbs ,//+ gameState.escala / 2,
-                    yAbs ,//+ gameState.escala / 2,
-                    gameState.escala , // - 1
-                    gameState.escala , // - 1
-                    gameState.niebla //0x000022    // cmabiar por nuestra niebla 
+                    xAbs ,
+                    yAbs ,
+                    gameState.escala , 
+                    gameState.escala , 
+                    gameState.niebla 
                 ).setAlpha(0.3).setDepth(1);
 
-                //grid.add.rectangle(x*gameState.escala, y*gameState.escala, gameState.tamCelda, gameState.tamCelda, gameState.niebla).setStrokeStyle(0.0, gameState.bordes).setDepth(1);
-
                 gameState.infoCelda.set(clave, {
-                    vision,           // rectángulo de niebla, controlás su alpha
-                    dronA: null,   // imagen del dron, null si no hay
+                    vision,             // rectángulo de niebla, controlás su alpha
+                    dronA: null,        // imagen del dron, null si no hay
                     dronN: null,
-                    ammo: 0,
-                    //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
-                    //ammoA: 0,
-                    //ammoN: 0,
-                    //dronId: null,
-                    i,
+                    ammo: 0,    //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
+                    i,  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                     j
                 });
             }
@@ -158,17 +141,13 @@ class escena3 extends Phaser.Scene {
             altoTotal
         ).setInteractive();
 
-        // ver si esto funciona con el this y los botones sino separarlo
-        //this.input.on('pointerdown', (pointer) => {
         zone.on('pointerdown', (pointer) => {
-            const columna = Math.floor((pointer.x - gameState.tableroX + gameState.escala / 2) / gameState.escala); // ((pointer.x - gameState.tableroX) / gameState.escala)
-            const fila = Math.floor((pointer.y - gameState.tableroY + gameState.escala / 2) / gameState.escala);   // ((pointer.y - gameState.tableroY) / gameState.escala)
+            const columna = Math.floor((pointer.x - gameState.tableroX + gameState.escala / 2) / gameState.escala);
+            const fila = Math.floor((pointer.y - gameState.tableroY + gameState.escala / 2) / gameState.escala);
             console.log(fila + ' / ' + columna);
             if (columna < 0 || columna >= gameState.ancho || fila < 0 || fila >= gameState.alto) return;
             
             this.limpiarBordes();
-            //gameState.infoCelda.get(mensaje.xi +','+ mensaje.yi).vision.setStrokeStyle(0, gameState.colorSelec);
-            //gameState.infoCelda.get(mensaje.xf +','+ mensaje.yf).vision.setStrokeStyle(0, gameState.colorSelec);
 
             if (gameState.fase === "DESPLIEGUE") {
                 mensaje.xi = columna;
@@ -198,12 +177,9 @@ class escena3 extends Phaser.Scene {
             }
 
             gameState.infoCelda.get(mensaje.xi +','+ mensaje.yi).vision.setStrokeStyle(3, gameState.colorSelec);
-            const data = gameState.infoCelda.get(columna +','+ fila);//(`${columna},${fila}`);
+            const data = gameState.infoCelda.get(columna +','+ fila);
             data.vision.setStrokeStyle(3, gameState.colorSelec);
             if ( (gameState.equipo == "NAVAL" && data.dronN) || (gameState.equipo == "AEREO" && data.dronA) ) {
-                // muestro municion
-                // funciona este this aca?
-                //this.textoMunicion.setText(data.ammo);
                 this.mostrarMensajeMunicion(data.ammo, pointer.x, pointer.y);
                 this.marcarRango(columna, fila);
             }
@@ -292,46 +268,28 @@ class escena3 extends Phaser.Scene {
 
     conectarSTOMP() {
         window.conexionWS.conectar(() => {
-            // suscribir al canal específico de la partida (y mantener /topic/game como respaldo)
+            // suscribir al canal de la partida
             if (gameState.canalPartida) {
                 window.conexionWS.suscribir(gameState.canalPartida, (message) => {
                     this.procesarMensaje(message);
                 });
                 
                 // Una vez suscrito, pedirle al servidor el estado actual
-                // Esto sincroniza a los jugadores que se conecten después
                 mensaje.accion = "ACTUALIZAR";
                 this.enviarMensage(mensaje);
-            }
-            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            // antiguo canal genérico queda vigente para compatibilidad
-            //window.conexionWS.suscribir('/topic/game', (message) => {
-            //    this.procesarMensaje(message);
-            //});
-            
+            } 
         }, (error) => {
             // Manejo de error de conexión
         });
-        //this.enviarMensage(mensaje); ///////////////ultimo comentado aca
     }
 
     procesarMensaje(msg) {
         console.log("procesarMensaje - recibido:", msg.tipoMensaje, "canal:", gameState.canalPartida, "miNombre:", mensaje.nombre);
         switch (msg.tipoMensaje) {
-            /*
-            case tipoMensaje.DATOS: { 
-                gameState.vidaPortaN = msg.vidaPortaN;
-                gameState.vidaPortaA = msg.vidaPortaA;
-                gameState.cantDronesN = msg.cantDronesN;
-                gameState.cantDronesA = msg.cantDronesA;
-                gameState.turnosMS = msg.turnosMS;
-                gameState.turno = msg.equipo;
-                this.actualizarHUD();
-            } break;*/
             case tipoMensaje.ESTADOPARTIDA: {
                 console.log("ESTADOPARTIDA - fase:", msg.fasePartida, "grillaLen:", msg.grilla ? msg.grilla.length : 0);
+                
                 // actualizado de fase de partida
-
                 gameState.fase = msg.fasePartida.toString();
                 if (gameState.fase !== "DESPLIEGUE") {
                     if ( !this.botonPasarActivo ) {
@@ -344,7 +302,7 @@ class escena3 extends Phaser.Scene {
                     }
                     if (gameState.fase == "MUERTE_SUBITA") {
                         if ( !this.muerteSubitaActiva ) {
-                            // intentar dejar creacuin en crearinterfaz
+                            // intentar dejar creacion en crearinterfaz
                             this.escenarioMS = this.add.image(this.escenario.x, this.escenario.y, "EscenarioMuerteSubita" ).setOrigin(0, 0).setDepth(0);
                             this.escenarioMS.setScale(1.163);
                             this.fondoMS = this.add.image(this.fondo.x, this.fondo.y, "FondoMS").setDepth(-1);   // creacion de fondo en posicion    // podria calcularse centro despues
@@ -409,13 +367,11 @@ class escena3 extends Phaser.Scene {
                         }break;
                         case "RECHAZADA":{
                             this.mostrarMensajeEvento("Solicitud de guardado rechazada");
-                            //alert("Solicitud de guardado rechazada");
                             gameState.solicitandoGuardado = false;
                             if (this.oscurecer && this.oscurecer.destroy) {
                                 this.oscurecer.destroy();
                                 this.oscurecer = null;
                             }
-                            //this.oscurecer.destroy();
                         }break;
                         case "ACEPTADA":{
                             this.mostrarMensajeEvento("Solicitud de guardado aceptada");
@@ -449,10 +405,6 @@ class escena3 extends Phaser.Scene {
                             this.oscurecer = null;
                         }
                     }
-                    //alert("err:"+msg.evento);
-
-                    /////////////////////////////////////////////////////////////////////////
-                    // agregar eliminacion de ventana de guardado si da error
                 }
             }break;
             case tipoMensaje.NOTIFICACION: { 
@@ -509,11 +461,6 @@ class escena3 extends Phaser.Scene {
                         this.scene.start('menu');
                     }
                 }, 4000);
-                // Desconectar websocket si es necesario
-                /*
-                if (window.conexionWS) {
-                    window.conexionWS.desconectar();
-                }*/
             } break;
         } 
     }
@@ -612,6 +559,11 @@ class escena3 extends Phaser.Scene {
 
     actualizarHUD() {
         this.textoTurno.setText(gameState.turno);
+        if (gameState.turno == "NAVAL") {
+            this.textoTurno.setTint(gameState.colorVerde);
+        } else {
+            this.textoTurno.setTint(gameState.colorRojo);
+        }
         this.textoCantDA.setText(gameState.cantDronesA + "x");
         this.textoCantDN.setText("x" + gameState.cantDronesN);
         this.textoVidaA.setText(gameState.vidaPortaA + "/6");
@@ -623,13 +575,12 @@ class escena3 extends Phaser.Scene {
         }
     }
 
-    // podria no pasarse el boton
     botonPasar(boton) {
         const p = boton;
         p.destroy();
         var pasarBtn = this.add.image(boton.x, boton.y, "Pasar").setScale(gameState.escalaBtn).setDepth(2).setInteractive({ useHandCursor: true });
         
-        pasarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+        pasarBtn.on('pointerover', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 pasarBtn.setScale(gameState.escalaBtn + 0.2);  
                 this.textoAyudas.setText("Pasar");
@@ -641,14 +592,14 @@ class escena3 extends Phaser.Scene {
                 this.textoAyudas.setPosition(pointer.x, pointer.y -20);
             } 
         });
-        pasarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        pasarBtn.on('pointerout', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 this.textoAyudas.setVisible(false); 
                 pasarBtn.setScale(gameState.escalaBtn);    
             }           
         });
 
-        pasarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        pasarBtn.on('pointerdown', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 gameState.clicks = 0;
                 this.limpiarBordes();
@@ -707,8 +658,8 @@ class escena3 extends Phaser.Scene {
         this.fondoTurnoVerde = this.add.rectangle(barraX - gameState.escala / 2, 0, anchoBarra / 2, barraY * 2, gameState.colorVerde).setOrigin(0.5, 0).setDepth(0);
 
         this.zonaDesp;
-        const anchoZona = 15 * gameState.escala; // ancho de zona despligue 15 casillas   // hacer metodo que se borran cuando pasa a jugando // -gameState.escala / 2
-        const altoZona = gameState.alto * gameState.escala;   // -1 
+        const anchoZona = 15 * gameState.escala; // ancho de zona despligue 15 casillas   
+        const altoZona = gameState.alto * gameState.escala;
         if (gameState.equipo === "NAVAL") {
             this.zonaDesp = this.add.rectangle(gameState.tableroX-gameState.escala / 2, gameState.tableroY-gameState.escala / 2, anchoZona, altoZona, gameState.colorVerde).setOrigin(0,0);
         } else {
@@ -749,7 +700,7 @@ class escena3 extends Phaser.Scene {
         this.pantallaImpactos = this.add.sprite(this.textoTurno.x , 540 ,"Impactos").setScale(1.5).setDepth(2);
         this.pantallaImpactos.setVisible(false);
 
-        moverBtn.on('pointerover', () => {     // asigna interaccion al clikear 
+        moverBtn.on('pointerover', () => {      
             if ( ! gameState.solicitandoGuardado) {
                 moverBtn.setScale(gameState.escalaBtn + 0.2);   
                 this.textoAyudas.setText("Mover");
@@ -761,13 +712,13 @@ class escena3 extends Phaser.Scene {
                 this.textoAyudas.setPosition(pointer.x, pointer.y -20);
             } 
         });
-        moverBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        moverBtn.on('pointerout', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 this.textoAyudas.setVisible(false); 
                 moverBtn.setScale(gameState.escalaBtn);  
             }           
         });
-        moverBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        moverBtn.on('pointerdown', () => {     
             if((gameState.fase === "JUGANDO" || gameState.fase === "MUERTE_SUBITA")  && ! gameState.solicitandoGuardado) {
                 this.limpiarBordes();
                 gameState.clicks = 0;
@@ -776,7 +727,7 @@ class escena3 extends Phaser.Scene {
             }
         });
 
-        atacarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+        atacarBtn.on('pointerover', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 atacarBtn.setScale(gameState.escalaBtn + 0.2);  
                 this.textoAyudas.setText("Atacar");
@@ -788,13 +739,13 @@ class escena3 extends Phaser.Scene {
                 this.textoAyudas.setPosition(pointer.x, pointer.y -20);
             } 
         });
-        atacarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        atacarBtn.on('pointerout', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 this.textoAyudas.setVisible(false); 
                 atacarBtn.setScale(gameState.escalaBtn);    
             }           
         });
-        atacarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        atacarBtn.on('pointerdown', () => {     
             if((gameState.fase === "JUGANDO" || gameState.fase === "MUERTE_SUBITA")   && !gameState.solicitandoGuardado ) {
                 this.limpiarBordes();
                 gameState.clicks = 0;
@@ -803,7 +754,7 @@ class escena3 extends Phaser.Scene {
             }
         });
 
-        recargarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+        recargarBtn.on('pointerover', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 recargarBtn.setScale(gameState.escalaBtn + 0.2); 
                 this.textoAyudas.setText("Recargar");
@@ -815,13 +766,13 @@ class escena3 extends Phaser.Scene {
                 this.textoAyudas.setPosition(pointer.x, pointer.y -20);
             } 
         });
-        recargarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        recargarBtn.on('pointerout', () => {     
             if ( !gameState.solicitandoGuardado) {
                 this.textoAyudas.setVisible(false); 
                 recargarBtn.setScale(gameState.escalaBtn);     
             }           
         });
-        recargarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        recargarBtn.on('pointerdown', () => {     
             if((gameState.fase === "JUGANDO" || gameState.fase === "MUERTE_SUBITA")   && ! gameState.solicitandoGuardado) {
                 this.limpiarBordes();
                 gameState.clicks = 0;
@@ -830,7 +781,7 @@ class escena3 extends Phaser.Scene {
             }
         });
 
-        this.desplegarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+        this.desplegarBtn.on('pointerover', () => {     
             this.desplegarBtn.setScale(gameState.escalaBtn + 0.2);   
             this.textoAyudas.setText("Desplegar");
             this.textoAyudas.setVisible(true);              
@@ -838,20 +789,20 @@ class escena3 extends Phaser.Scene {
         this.desplegarBtn.on('pointermove', (pointer) => {
             this.textoAyudas.setPosition(pointer.x, pointer.y -20);
         });
-        this.desplegarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        this.desplegarBtn.on('pointerout', () => {     
             this.textoAyudas.setVisible(false); 
             this.desplegarBtn.setScale(gameState.escalaBtn);                
         });
 
-        //boton pasar turno con skin alternativa para desplegar al inicio
-        this.desplegarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        //sera remplazado por boton pasar turno luego de desplegar
+        this.desplegarBtn.on('pointerdown', () => {     
             this.limpiarBordes();
             gameState.clicks = 0;
             mensaje.accion = "DESPLEGAR";
             this.enviarMensage(mensaje);              
         });
     
-        guardarBtn.on('pointerover', () => {     // asigna interaccion al clikear
+        guardarBtn.on('pointerover', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 guardarBtn.setScale(gameState.escalaBtn + 0.2);   
                 this.textoAyudas.setText("Guardar");
@@ -863,13 +814,13 @@ class escena3 extends Phaser.Scene {
                 this.textoAyudas.setPosition(pointer.x, pointer.y -20);
             } 
         });
-        guardarBtn.on('pointerout', () => {     // asigna interaccion al clikear
+        guardarBtn.on('pointerout', () => {     
             if ( ! gameState.solicitandoGuardado) {
                 this.textoAyudas.setVisible(false); 
                 guardarBtn.setScale(gameState.escalaBtn);      
             }           
         });
-        guardarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        guardarBtn.on('pointerdown', () => {     
             if((gameState.fase === "JUGANDO" || gameState.fase === "MUERTE_SUBITA")   && ! gameState.solicitandoGuardado) {
                 gameState.clicks = 0;
                 this.limpiarBordes(); //, clicks = 0 aca
@@ -889,15 +840,15 @@ class escena3 extends Phaser.Scene {
         var aceptarBtn = this.add.image(950 + 333, alerta.y + alerta.height / 6,"Aceptar").setInteractive({ useHandCursor: true }).setDepth(4);
         var textoSolicitud = this.add.text(950, alerta.y - alerta.height / 4, "Se ha recibido una solicitud de guardado\nDesea guardar la partida y volver al menu?", { fontFamily: 'Courier, monospace', fontSize: 40, fontStyle: 'bold', color: '#ffffff' }).setStroke('#000000', 4).setOrigin(0.5, 0.5).setDepth(4);
 
-        rechazarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+        rechazarBtn.on('pointerover', function() {     
             rechazarBtn.setTint(0xff3030);
             rechazarBtn.setScale(1.1);               
         });
-        rechazarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+        rechazarBtn.on('pointerout', function() {     
             rechazarBtn.clearTint();
             rechazarBtn.setScale(1);               
         });
-        rechazarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        rechazarBtn.on('pointerdown', () => {     
             mensaje.accion = "RECHAZAR";               
             this.enviarMensage(mensaje); 
             gameState.solicitandoGuardado = false;
@@ -908,15 +859,15 @@ class escena3 extends Phaser.Scene {
             aceptarBtn.destroy();
         });
 
-        aceptarBtn.on('pointerover', function() {     // asigna interaccion al clikear
+        aceptarBtn.on('pointerover', function() {     
             aceptarBtn.setTint(gameState.colorSelec);
             aceptarBtn.setScale(1.1);               
         });
-        aceptarBtn.on('pointerout', function() {     // asigna interaccion al clikear
+        aceptarBtn.on('pointerout', function() {     
             aceptarBtn.clearTint();
             aceptarBtn.setScale(1);               
         });
-        aceptarBtn.on('pointerdown', () => {     // asigna interaccion al clikear
+        aceptarBtn.on('pointerdown', () => {     
             mensaje.accion = "ACEPTAR";               
             this.enviarMensage(mensaje); 
 
@@ -1006,8 +957,6 @@ class escena3 extends Phaser.Scene {
     }
 
     shutdown() {
-        // Guardar el canal antes de limpiar el gameState; si no, no podremos desuscribir.
-        //const canalAnterior = gameState.canalPartida;
         if (this.musica) {
             this.musica.stop();
             this.musica.destroy();
@@ -1019,12 +968,10 @@ class escena3 extends Phaser.Scene {
         if (gameState.canalPartida) {
             window.conexionWS.desuscribir(gameState.canalPartida);
         }
-
         if (this.beforeUnloadHandler) {
             window.removeEventListener('beforeunload', this.beforeUnloadHandler);
             this.beforeUnloadHandler = null;
         }
-
         this.eliminardrones();
         // borrar tablero nuevo
         if (this.forma)
@@ -1083,7 +1030,6 @@ class escena3 extends Phaser.Scene {
         gameState.portaAX = 63 ;
         gameState.portaAY = 0 ;
         gameState.escala = 22.36 ;
-        gameState.tamCelda = 23 ;
         gameState.solicitandoGuardado = false ;
         mensaje.nombre = "" ;
         mensaje.accion = "" ;
@@ -1091,15 +1037,7 @@ class escena3 extends Phaser.Scene {
         mensaje.yi = 15 ;
         mensaje.xf = 30 ;
         mensaje.yf = 15 ;
-        // Limpieza de suscripciones: evitar que queden callbacks viejos activos al volver al menú.
         window.conexionWS.desuscribir('/topic/accion');
-
-        /*
-        window.conexionWS.desuscribir('/topic/game');
-        if (canalAnterior) {
-            window.conexionWS.desuscribir(canalAnterior);
-        }*/
-        // pq no seria necesario hacer stop?
         this.scene.stop('partida');
     }
     

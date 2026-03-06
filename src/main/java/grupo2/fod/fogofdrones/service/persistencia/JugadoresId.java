@@ -21,17 +21,10 @@ public class JugadoresId implements Serializable{
         this.jugadorNaval = jugadornaval;
     }
 
-
-    /**
-     * @return String return the jugadorAereo
-     */
     public String getJugadorAereo() {
         return jugadorAereo;
     }
 
-    /**
-     * @return String return the jugadorNaval
-     */
     public String getJugadorNaval() {
         return jugadorNaval;
     }

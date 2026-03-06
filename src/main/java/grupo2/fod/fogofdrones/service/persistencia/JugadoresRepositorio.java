@@ -10,6 +10,5 @@ public interface JugadoresRepositorio extends CrudRepository<Jugador, String > {
 
     
 	List<Jugador> findFirst12ByOrderByPuntosDescVictoriasDesc();
-	//List<Jugador> findAllByOrderByPuntosDescVictoriasDesc();
 }
 

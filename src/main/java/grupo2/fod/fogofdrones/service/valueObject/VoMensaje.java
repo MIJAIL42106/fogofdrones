@@ -23,45 +23,6 @@ public class VoMensaje {
     private String nombre;
     private Equipo equipo;
     private String evento;
-    private String canal;   // obtenemos ambos nombres para mostrarlos 
+    private String canal;
     private int turnosMuerteSubita;
-    //cargar partida, interfaz grafica, animacion, codigo
-
-    /* 
-    public VoMensaje() {
-        this.tipoMensaje = 0;
-        this.nombre = null;
-        this.equipo = null;
-        this.fasePartida = null;    
-        this.grilla = null;
-        this.codError = 0;
-    }
-
-    public VoMensaje(String nombre, Equipo equipo) {
-        this.tipoMensaje = 0;
-        this.nombre = nombre;
-        this.equipo = equipo;
-        this.fasePartida = null;    
-        this.grilla = null;
-        this.codError = 0;
-    }
-    
-    public VoMensaje(FasePartida fasePartida, Mapa tablero) {
-        this.tipoMensaje = 1;
-        this.fasePartida = fasePartida;
-        this.grilla = tablero.getGrillaLineal();
-        this.nombre = null;
-        this.equipo = null;
-        this.codError = 0;
-    }
-
-    public VoMensaje(String nombre, int codError) {
-        this.tipoMensaje = 2;
-        this.nombre = nombre;
-        this.codError = codError;
-        this.fasePartida = null;
-        this.grilla = null;
-        this.equipo = null;
-    }*/
-
 }

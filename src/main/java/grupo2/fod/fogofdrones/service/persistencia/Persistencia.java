@@ -43,9 +43,6 @@ public class Persistencia implements Serializable{
         return jugadores.getJugadorNaval();
     }
 
-    /**
-     * @return Partida return the partida
-     */
     public Partida getPartida() {
         return partida;
     }

@@ -5,10 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.stereotype.Component;
 
-/**
- * Registro simple: asocia sesión STOMP con nombre de jugador.
- * Se usa para detectar desconexiones (recarga/cierre) y finalizar por abandono.
- */
+//Registro simple: asocia sesión STOMP con nombre de jugador.Se usa para detectar desconexiones (recarga/cierre) y finalizar por abandono.
 @Component
 public class SesionJugadores {
 
@@ -35,9 +32,7 @@ public class SesionJugadores {
         return jugadorPorSession.get(sessionId);
     }
 
-    /**
-     * Elimina el vínculo de una sesión y devuelve el nombre asociado (si existía).
-     */
+    //Elimina el vínculo de una sesión y devuelve el nombre asociado (si existía).
     public String eliminarPorSession(String sessionId) {
         if (sessionId == null) {
             return null;

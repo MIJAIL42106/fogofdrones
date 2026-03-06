@@ -10,21 +10,5 @@ public class GameController {
 	public String showChatPage() {
 		return "index.html";
 	}
-	
 
-	//@GetMapping("/test-game")
-	//public String index() {
-	//	return "index.html";
-	//}
-	
-
-	// @GetMapping("/lobby")
-	// public String showLobby() {
-	//     return "lobby";
-	// }
-	
-	// @GetMapping("/game")
-	// public String showGame() {
-	//     return "game";
-	// }
 }
