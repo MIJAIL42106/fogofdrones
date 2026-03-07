@@ -167,11 +167,11 @@ public class Servicios{
 
     private void eliminarPartidasGuardadasPrevias(String nombre1, String nombre2) {
         Set<String> clavesEliminadas = new HashSet<>();
-        eliminarPartidaGuardadaDeJugador(nombre1, clavesEliminadas);
-        eliminarPartidaGuardadaDeJugador(nombre2, clavesEliminadas);
+        eliminarPartidaGuardadaDeJugador(nombre1, nombre1, nombre2, clavesEliminadas);
+        eliminarPartidaGuardadaDeJugador(nombre2, nombre1, nombre2, clavesEliminadas);
     }
 
-    private void eliminarPartidaGuardadaDeJugador(String nombreJugador, Set<String> clavesEliminadas) {
+    private void eliminarPartidaGuardadaDeJugador(String nombreJugador, String jugadorActual1, String jugadorActual2, Set<String> clavesEliminadas) {
         Persistencia persistencia = repoPartidas.findByJugador(nombreJugador).orElse(null);
         if (persistencia == null) {
             return;
@@ -185,15 +185,36 @@ public class Servicios{
         Partida partidaGuardada = persistencia.getPartida();
         if (partidaGuardada != null) {
             Equipo ganador = Equipo.NINGUNO;
-            if (nombreJugador.equals(persistencia.getJugadorNaval())) {
-                ganador = Equipo.AEREO;
-            } else if (nombreJugador.equals(persistencia.getJugadorAereo())) {
-                ganador = Equipo.NAVAL;
+            boolean esPartidaEntreMismosJugadores = sonMismosJugadores(
+                persistencia.getJugadorNaval(),
+                persistencia.getJugadorAereo(),
+                jugadorActual1,
+                jugadorActual2
+            );
+            if (!esPartidaEntreMismosJugadores) {
+                if (nombreJugador.equals(persistencia.getJugadorNaval())) {
+                    ganador = Equipo.AEREO;
+                } else if (nombreJugador.equals(persistencia.getJugadorAereo())) {
+                    ganador = Equipo.NAVAL;
+                }
             }
             registrarResultado(partidaGuardada, ganador);
         }
 
         repoPartidas.delete(persistencia);
+    }
+
+    public boolean existePartidaGuardadaEntre(String nombre1, String nombre2) {
+        Persistencia persistencia = repoPartidas.findByJugador(nombre1).orElse(null);
+        if (persistencia == null) {
+            return false;
+        }
+        return sonMismosJugadores(persistencia.getJugadorNaval(), persistencia.getJugadorAereo(), nombre1, nombre2);
+    }
+
+    private boolean sonMismosJugadores(String jugadorA1, String jugadorA2, String jugadorB1, String jugadorB2) {
+        return (jugadorA1.equals(jugadorB1) && jugadorA2.equals(jugadorB2))
+            || (jugadorA1.equals(jugadorB2) && jugadorA2.equals(jugadorB1));
     }
 
     public boolean existePartidaGuardada(String nombreJugador) {

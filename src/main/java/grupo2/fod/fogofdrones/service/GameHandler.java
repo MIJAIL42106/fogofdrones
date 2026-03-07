@@ -38,6 +38,7 @@ public class GameHandler {
 	private final Map<String, Boolean> aprobacionRivalPendientePorClave = new ConcurrentHashMap<>();
 	private final Map<String, Boolean> reemplazoGuardadoPendientePorClave = new ConcurrentHashMap<>();
 	private final Map<String, Set<String>> confirmacionReemplazoPendientePorClave = new ConcurrentHashMap<>();
+	private final Map<String, Boolean> reemplazoEmpatePendientePorClave = new ConcurrentHashMap<>();
 
 	public synchronized void limpiarColasPorDesconexion(String nombre) {
 		if (nombre == null || nombre.trim().isEmpty()) {
@@ -374,17 +375,21 @@ public class GameHandler {
 			solicitanteGuardadoPendientePorClave.put(clave, solicitante);
 			aprobacionRivalPendientePorClave.put(clave, true);
 
+			boolean reemplazoConEmpate = servicios.existePartidaGuardadaEntre(solicitante, nombre);
+			reemplazoEmpatePendientePorClave.put(clave, reemplazoConEmpate);
+
 			Set<String> jugadoresConGuardado = obtenerJugadoresConPartidaGuardada(solicitante, nombre);
 			if (!jugadoresConGuardado.isEmpty()) {
 				reemplazoGuardadoPendientePorClave.put(clave, true);
 				confirmacionReemplazoPendientePorClave.put(clave, new HashSet<>(jugadoresConGuardado));
 				if (jugadoresConGuardado.contains(solicitante)) {
-					enviarMensajeGuardado(p, solicitante, "CONFIRMAR_REEMPLAZO");
+					enviarMensajeGuardado(p, solicitante, obtenerEventoConfirmacionReemplazo(clave));
 					return;
 				}
 			} else {
 				reemplazoGuardadoPendientePorClave.remove(clave);
 				confirmacionReemplazoPendientePorClave.remove(clave);
+				reemplazoEmpatePendientePorClave.remove(clave);
 			}
 
 			enviarMensajeGuardado(p, nombre, "SOLICITUD");
@@ -450,7 +455,7 @@ public class GameHandler {
 				aprobacionRivalPendientePorClave.remove(clave);
 				Set<String> pendientesReemplazoRestantes = confirmacionReemplazoPendientePorClave.get(clave);
 				if (pendientesReemplazoRestantes != null && !pendientesReemplazoRestantes.isEmpty()) {
-					enviarMensajesGuardado(p, new HashSet<>(pendientesReemplazoRestantes), "CONFIRMAR_REEMPLAZO");
+					enviarMensajesGuardado(p, new HashSet<>(pendientesReemplazoRestantes), obtenerEventoConfirmacionReemplazo(clave));
 					return;
 				}
 			}
@@ -462,7 +467,7 @@ public class GameHandler {
 				}
 				confirmacionReemplazoPendientePorClave.remove(clave);
 			} else if (pendientesReemplazo != null && !pendientesReemplazo.isEmpty()) {
-				enviarMensajesGuardado(p, new HashSet<>(pendientesReemplazo), "CONFIRMAR_REEMPLAZO");
+				enviarMensajesGuardado(p, new HashSet<>(pendientesReemplazo), obtenerEventoConfirmacionReemplazo(clave));
 				return;
 			}
 
@@ -470,6 +475,7 @@ public class GameHandler {
 			boolean reemplazarGuardadas = Boolean.TRUE.equals(reemplazoGuardadoPendientePorClave.remove(clave));
 			confirmacionReemplazoPendientePorClave.remove(clave);
 			aprobacionRivalPendientePorClave.remove(clave);
+			reemplazoEmpatePendientePorClave.remove(clave);
 
 			if (!servicios.guardarPartida(p.getJugadorNaval().getNombre(), p.getJugadorAereo().getNombre(), reemplazarGuardadas)) {
 				String evento = reemplazarGuardadas
@@ -533,6 +539,13 @@ public class GameHandler {
 		aprobacionRivalPendientePorClave.remove(clave);
 		reemplazoGuardadoPendientePorClave.remove(clave);
 		confirmacionReemplazoPendientePorClave.remove(clave);
+		reemplazoEmpatePendientePorClave.remove(clave);
+	}
+
+	private String obtenerEventoConfirmacionReemplazo(String clave) {
+		return Boolean.TRUE.equals(reemplazoEmpatePendientePorClave.get(clave))
+			? "CONFIRMAR_REEMPLAZO_EMPATE"
+			: "CONFIRMAR_REEMPLAZO";
 	}
 
 	//Genera el mensaje de retorno con el estado actual del juego
