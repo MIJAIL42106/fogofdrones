@@ -7,7 +7,7 @@ import grupo2.fod.fogofdrones.service.logica.Partida;
 import grupo2.fod.fogofdrones.service.logica.Posicion;
 import grupo2.fod.fogofdrones.service.logica.Servicios;
 
-public class pruebaJPA {
+public class PruebaJPA {
 
     public static void main(String[] args) {
         // Iniciar Spring Boot para obtener el contexto

@@ -6,7 +6,7 @@ import grupo2.fod.fogofdrones.service.logica.Posicion;
 
 // mejorar prueba con comentarios
 
-public class prueba {
+public class Prueba {
     public static void main(String[] args) {
         Jugador j1 = new Jugador("Juan1",0,0);
         Jugador j2 = new Jugador("Pepe2",0,0);
