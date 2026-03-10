@@ -23,7 +23,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
 		// Registra el endpoint STOMP, permitiendo fallback a SockJS
-		registry.addEndpoint("/game")
+		registry.addEndpoint("/juego")
 				.setAllowedOriginPatterns("*")
 				.withSockJS();
 	}

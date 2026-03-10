@@ -221,30 +221,7 @@ class escena1 extends Phaser.Scene {
             this.estadoTexto.setText('Error de conexión');
         });
     }
-/*
-    resizeRanking(gameSize) {
-        // gameSize es el objeto {width,height} que envía scale.on('resize')
-        const size = gameSize || this.scale.gameSize || this.cameras.main;
-        const width = size.width;
-        const height = size.height;
-        const panelX = width - 360;
-        const panelY = 60;
 
-        // reposicionamos el panel y los elementos
-        if (this._rankingPanel) {
-            this._rankingPanel.setPosition(panelX + 160, panelY + 160);
-        }
-        if (this.rankingTitulo) {
-            this.rankingTitulo.setPosition(panelX + 16, panelY - 10);
-        }
-        if (this.rankingText) {
-            this.rankingText.setPosition(panelX + 16, panelY + 32);
-            // ajustar word wrap width si cambia el ancho disponible
-            const newWidth = Math.min(300, Math.max(120, width - panelX - 40));
-            this.rankingText.setWordWrapWidth(newWidth);
-        }
-    }
-*/
     crearUIRanking() {
         const { width, height } = this.cameras.main;
         const panelX = width - 230;

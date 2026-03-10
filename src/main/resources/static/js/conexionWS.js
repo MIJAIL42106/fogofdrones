@@ -1,53 +1,53 @@
 class ConexionWS { 
-    constructor() {                                     //constructor(url = 'http://localhost:8080/game') {   
-        this.url = 'http://26.169.248.78:8080/game';    // http://26.169.248.78:8080/game // http://localhost:8080/game
-        this.stompClient = null;
-        this.connected = false;
-        this.subscriptions = {};
+    constructor() {                                     //constructor(url = 'http://localhost:8080/juego') {   
+        this.url = 'http://26.169.248.78:8080/juego';    // http://26.169.248.78:8080/juego // http://localhost:8080/juego
+        this.clienteStomp = null;
+        this.conectado = false;
+        this.suscripciones = {};
     }
 
     conectar(onConnectCallback, onErrorCallback) {
         console.log('conectar');
-        if (this.connected) {
+        if (this.conectado) {
             if (onConnectCallback) onConnectCallback();
             return;
         }
         const socket = new SockJS(this.url);
-        this.stompClient = Stomp.over(socket);
-        this.stompClient.debug = null;
-        this.stompClient.connect({}, () => {
-            this.connected = true;
+        this.clienteStomp = Stomp.over(socket);
+        this.clienteStomp.debug = null;
+        this.clienteStomp.connect({}, () => {
+            this.conectado = true;
             if (onConnectCallback) onConnectCallback();
         }, (error) => {
-            this.connected = false;
+            this.conectado = false;
             if (onErrorCallback) onErrorCallback(error);
         });
     }
 
     desconectar() {
         console.log('desconectar');
-        if (this.stompClient && this.connected) {
-            this.stompClient.disconnect(() => {
-                this.connected = false;
+        if (this.clienteStomp && this.conectado) {
+            this.clienteStomp.disconnect(() => {
+                this.conectado = false;
             });
         }
     }
 
     enviar(destino, cuerpo) {
         console.log('enviar');
-        if (this.stompClient && this.connected) {
-            this.stompClient.send(destino, {}, JSON.stringify(cuerpo));
+        if (this.clienteStomp && this.conectado) {
+            this.clienteStomp.send(destino, {}, JSON.stringify(cuerpo));
         }
     }
 
     suscribir(topico, callback) {
         console.log('suscribir');
 
-        if (this.stompClient && this.connected) {
-            if (this.subscriptions[topico]) {
-                this.subscriptions[topico].unsubscribe();
+        if (this.clienteStomp && this.conectado) {
+            if (this.suscripciones[topico]) {
+                this.suscripciones[topico].unsubscribe();
             }
-            this.subscriptions[topico] = this.stompClient.subscribe(topico, (mensaje) => {
+            this.suscripciones[topico] = this.clienteStomp.subscribe(topico, (mensaje) => {
                 callback(JSON.parse(mensaje.body));
             });
         }
@@ -55,9 +55,9 @@ class ConexionWS {
 
     desuscribir(topico) {
         console.log('desuscribir');
-        if (this.subscriptions[topico]) {
-            this.subscriptions[topico].unsubscribe();
-            delete this.subscriptions[topico];
+        if (this.suscripciones[topico]) {
+            this.suscripciones[topico].unsubscribe();
+            delete this.suscripciones[topico];
         }
     }
 }
