@@ -1,6 +1,6 @@
 class ConexionWS { 
-    constructor() {                                     //constructor(url = 'http://localhost:8080/juego') {   
-        this.url = 'http://26.169.248.78:8080/juego';    // http://26.169.248.78:8080/juego // http://localhost:8080/juego
+    constructor() {                                     
+        this.url = 'http://localhost:8080/juego';    // http://ip:8080/juego // http://localhost:8080/juego
         this.clienteStomp = null;
         this.conectado = false;
         this.suscripciones = {};

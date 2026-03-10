@@ -284,7 +284,7 @@ class escena3 extends Phaser.Scene {
                 estadoJuego.fase = msg.fasePartida.toString();
                 if (estadoJuego.fase !== "DESPLIEGUE") {
                     if ( !this.botonPasarActivo ) {
-                        if (this.zonaDesp && this.zonaDesp.destroy) {
+                        if (this.zonaDesp) {
                             this.zonaDesp.destroy();
                             this.zonaDesp = null;
                         }
@@ -297,11 +297,11 @@ class escena3 extends Phaser.Scene {
                             // tambien se cambia la musica y se muestran los turnos restantes de muerte subita
                             this.escenarioMS.setVisible(true);
                             this.fondoMS.setVisible(true);
-                            if (this.escenario && this.escenario.destroy) {
+                            if (this.escenario) {
                                 this.escenario.destroy();
                                 this.escenario = null;
                             }
-                            if (this.fondo && this.fondo.destroy) {
+                            if (this.fondo) {
                                 this.fondo.destroy();
                                 this.fondo = null;
                             }
@@ -361,7 +361,7 @@ class escena3 extends Phaser.Scene {
                         case "RECHAZADA":{
                             this.mostrarMensajeEvento("Solicitud de guardado rechazada");
                             estadoJuego.solicitandoGuardado = false;
-                            if (this.oscurecer && this.oscurecer.destroy) {
+                            if (this.oscurecer) {
                                 this.oscurecer.destroy();
                                 this.oscurecer = null;
                             }
@@ -369,7 +369,7 @@ class escena3 extends Phaser.Scene {
                         case "ACEPTADA":{
                             this.mostrarMensajeEvento("Solicitud de guardado aceptada");
                             estadoJuego.solicitandoGuardado = false;
-                            if (this.oscurecer && this.oscurecer.destroy) {
+                            if (this.oscurecer) {
                                 this.oscurecer.destroy();
                                 this.oscurecer = null;
                             }
@@ -391,7 +391,7 @@ class escena3 extends Phaser.Scene {
                     this.mostrarMensajeError(msg.evento);
                     if (estadoJuego.solicitandoGuardado) {
                         estadoJuego.solicitandoGuardado = false;
-                        if (this.oscurecer && this.oscurecer.destroy) {
+                        if (this.oscurecer) {
                             this.oscurecer.destroy();
                             this.oscurecer = null;
                         }
@@ -439,7 +439,7 @@ class escena3 extends Phaser.Scene {
                 let ganador = msg.nombre;
                 let mensajeFin = msg.evento + "\nGanador: " + ganador;
                 this.mostrarMensajeEvento(mensajeFin);
-                
+                this.textoTurnosMS.setVisible(false);
                 // Al aceptar, salir de la partida y volver al menú
                 setTimeout(() => {
                     try {
@@ -601,9 +601,11 @@ class escena3 extends Phaser.Scene {
 
     crearInterfaz() {
         // ancho y alto de pantalla
-        const { anchoPantalla, altoPantalla } = this.cameras.main;
+        const { width, height } = this.cameras.main;
+        estadoJuego.anchoPantalla = width;
+        estadoJuego.altoPantalla = height;
         // fondo centrado en pantalla, hecho a medida, escala 1
-        this.fondo = this.add.image(anchoPantalla / 2, altoPantalla / 2, "Fondo").setDepth(-1);
+        this.fondo = this.add.image(estadoJuego.anchoPantalla / 2, estadoJuego.altoPantalla / 2, "Fondo").setDepth(-1);
         this.fondo.setScale(1);
         // escenario centrado en tablero
         this.escenario = this.add.image(estadoJuego.tableroX - estadoJuego.escala/2, estadoJuego.tableroY - estadoJuego.escala/2,"Escenario").setOrigin(0, 0).setDepth(0);
@@ -709,7 +711,7 @@ class escena3 extends Phaser.Scene {
         this.textoAyudas = this.add.text(0, 0, " ", {fontSize: '25px', fill: '#fff', backgroundColor: '#000' }).setVisible(false).setOrigin(0.5, 0.5).setDepth(3);
 
         // creacion de botones de acciones
-        const posXBtn = anchoPantalla - 110 ;
+        const posXBtn = estadoJuego.anchoPantalla - 110 ;
         const tamBtn = 64 * estadoJuego.escalaBtn ;
         const sep = 67 ;
         var posY =  estadoJuego.tableroY * 1.5 ;
@@ -733,7 +735,7 @@ class escena3 extends Phaser.Scene {
         this.musicaMS = this.sound.add("MusicaMuerteSubita",{ loop: true });
 
         // pantalla lateral de impactos, se muestra centrado al tablero dando feedback de los ataques
-        this.pantallaImpactos = this.add.sprite(this.textoTurno.x , altoPantalla / 2 ,"Impactos").setScale(1.5).setDepth(2);
+        this.pantallaImpactos = this.add.sprite(this.textoTurno.x , estadoJuego.altoPantalla / 2 ,"Impactos").setScale(1.5).setDepth(2);
         this.pantallaImpactos.setVisible(false);
 
         // interacciones para boton mover
@@ -862,26 +864,23 @@ class escena3 extends Phaser.Scene {
                 mensaje.accion = "GUARDAR";               
                 this.enviarMensage(mensaje); 
                 estadoJuego.solicitandoGuardado = true;
-                this.oscurecer = this.add.rectangle(anchoPantalla / 2, altoPantalla / 2, anchoPantalla, altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
+                this.oscurecer = this.add.rectangle(estadoJuego.anchoPantalla / 2, estadoJuego.altoPantalla / 2, estadoJuego.anchoPantalla, estadoJuego.altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
             }
         });
     }
 
     solicitarGuardado(tipoSolicitud){
-        // ancho y alto de pantalla
-        const { anchoPantalla, altoPantalla } = this.cameras.main;
-
         estadoJuego.solicitandoGuardado = true;
-        if (this.oscurecer && this.oscurecer.destroy) {
+        if (this.oscurecer) {
             this.oscurecer.destroy();
             this.oscurecer = null;
         }
         const requiereReemplazo = tipoSolicitud === 'REEMPLAZO' || tipoSolicitud === 'REEMPLAZO_EMPATE';
-        var oscurecer = this.add.rectangle(anchoPantalla / 2, altoPantalla / 2, anchoPantalla, altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
+        var oscurecer = this.add.rectangle(estadoJuego.anchoPantalla / 2, estadoJuego.altoPantalla / 2, estadoJuego.anchoPantalla, estadoJuego.altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
         this.oscurecer = oscurecer;
-        var alerta = this.add.rectangle(anchoPantalla / 2, altoPantalla / 2, anchoPantalla * 0.7, altoPantalla * 0.3, estadoJuego.niebla).setDepth(3);
-        var rechazarBtn = this.add.image(anchoPantalla / 2 - 333, alerta.y + alerta.height / 6,"Rechazar").setInteractive({ useHandCursor: true }).setDepth(4);
-        var aceptarBtn = this.add.image(anchoPantalla / 2 + 333, alerta.y + alerta.height / 6,"Aceptar").setInteractive({ useHandCursor: true }).setDepth(4);
+        var alerta = this.add.rectangle(estadoJuego.anchoPantalla / 2, estadoJuego.altoPantalla / 2, estadoJuego.anchoPantalla * 0.7, estadoJuego.altoPantalla * 0.3, estadoJuego.niebla).setDepth(3);
+        var rechazarBtn = this.add.image(estadoJuego.anchoPantalla / 2 - 333, alerta.y + alerta.height / 6,"Rechazar").setInteractive({ useHandCursor: true }).setDepth(4);
+        var aceptarBtn = this.add.image(estadoJuego.anchoPantalla / 2 + 333, alerta.y + alerta.height / 6,"Aceptar").setInteractive({ useHandCursor: true }).setDepth(4);
         let texto = "Se ha recibido una solicitud de guardado de partida.\nDesea guardar la partida y volver al menu?";
         if (requiereReemplazo) {
             if(tipoSolicitud === 'REEMPLAZO_EMPATE'){
@@ -891,7 +890,7 @@ class escena3 extends Phaser.Scene {
             }
         }
 
-        var textoSolicitud = this.add.text(anchoPantalla / 2, alerta.y - alerta.height / 4, texto, { fontFamily: 'Courier, monospace', fontSize: 40, fontStyle: 'bold', color: '#ffffff' }).setStroke('#000000', 4).setOrigin(0.5, 0.5).setDepth(4);
+        var textoSolicitud = this.add.text(estadoJuego.anchoPantalla / 2, alerta.y - alerta.height / 4, texto, { fontFamily: 'Courier, monospace', fontSize: 40, fontStyle: 'bold', color: '#ffffff' }).setStroke('#000000', 4).setOrigin(0.5, 0.5).setDepth(4);
 
         rechazarBtn.on('pointerover', function() {     
             rechazarBtn.setTint(0xff3030);
@@ -930,7 +929,7 @@ class escena3 extends Phaser.Scene {
             estadoJuego.solicitandoGuardado = true;
             oscurecer.destroy();
             if (requiereReemplazo) {
-                this.oscurecer = this.add.rectangle(anchoPantalla / 2, altoPantalla / 2, anchoPantalla, altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
+                this.oscurecer = this.add.rectangle(estadoJuego.anchoPantalla / 2, estadoJuego.altoPantalla / 2, estadoJuego.anchoPantalla, estadoJuego.altoPantalla, estadoJuego.niebla).setDepth(3).setAlpha(0.4);
             } else if (this.oscurecer === oscurecer) {
                 this.oscurecer = null;
             }
@@ -1034,13 +1033,23 @@ class escena3 extends Phaser.Scene {
             this.beforeUnloadHandler = null;
         }
         this.eliminardrones();
-        // borrar tablero nuevo
         if (this.forma)
             this.forma.destroy();
-        if (estadoJuego.infoCelda)
-            estadoJuego.infoCelda.destroy();
-        if (zone)
-            zone.destroy();
+        if (estadoJuego.infoCelda) {
+            for (const celda of estadoJuego.infoCelda.values()) {
+                if (celda.vision) {
+                    celda.vision.destroy();
+                }
+                if (celda.dronA) {
+                    celda.dronA.destroy();
+                }
+                if (celda.dronN) {
+                    celda.dronN.destroy();
+                }
+            }
+            estadoJuego.infoCelda.clear();
+            estadoJuego.infoCelda = null;
+        }
         if (this.mascara)
             this.mascara.destroy();
         if (this.pantallaImpactos)

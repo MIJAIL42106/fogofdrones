@@ -27,9 +27,7 @@ class escena1 extends Phaser.Scene {
         // Limpieza defensiva: si quedó un input de nombre de una sesión anterior,
         // eliminarlo antes de crear uno nuevo.
         this.eliminarInputsNombreGlobal();
-        
-        //this.cameras.main.setBackgroundColor('#FF0000'); // Rojo
-        //this.cameras.main.setBackgroundColor('rgba(0, 0, 0, 0.5)'); // Transparente
+
         document.body.style.backgroundColor = '#000000';  // este cubre todo el fondo, incluso el canvas
         
         this.fondo = this.add.image(width / 2, height / 2, "FondoMenu");
@@ -419,7 +417,7 @@ class escena1 extends Phaser.Scene {
         });
     }
 
-    shutdown() {/*
+    shutdown() {
         if (this._rankingPanel)
             this._rankingPanel.destroy();
         if (this.cargarBtn)
@@ -433,8 +431,6 @@ class escena1 extends Phaser.Scene {
         if (this.rankingTitulo)
             this.rankingTitulo.destroy();
 
-        //this.tweens.removeAll();
-        this.tweens.killAll();*/
         if (this.musica) {
             this.musica.stop();
             this.musica.destroy();
