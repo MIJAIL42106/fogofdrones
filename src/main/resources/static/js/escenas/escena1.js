@@ -119,7 +119,6 @@ class escena1 extends Phaser.Scene {
             mensajeLogin.nombre = this.nombreInput.value.trim();
             if (!mensajeLogin.nombre) {
                 this.mostrarMensajeError("Falta Nombre");
-                //alert('falta nombre');
                 return;
             }
             this.cargandoPartida = true;
@@ -143,21 +142,12 @@ class escena1 extends Phaser.Scene {
                     // Si el error es por cargar partida guardada
                     if (msg.evento && msg.evento.includes('No tienes partida guardada')) {
                         this.mostrarMensajeError(msg.evento);
-                        //alert('No tienes partida guardada');
                         this.cancelarCarga();
-                        return;//////////////////////////////////////////// reeturn peruano
+                        return;
                     }
-                    // Error de login/búsqueda de partida
                     this.cancelarCarga();
-                    this.cancelarBusqueda();/*
-                    this.buscandoPartida = false;
-                    this.awaitingLoginResponse = false;
-                    this.nombreInput.disabled = false;
-                    this.jugarBtn.setText('BUSCAR PARTIDA');
-                    this.jugarBtn.setBackgroundColor('#66bb6a'); // verde claro por defecto
-                    this.estadoTexto.setText('');*/
+                    this.cancelarBusqueda();
                     this.mostrarMensajeError(msg.evento);
-                    //alert(msg.error || 'No se pudo iniciar sesión');
                     return;
                 }
             });
@@ -191,7 +181,7 @@ class escena1 extends Phaser.Scene {
                 }
 
                 // Cabecera y filas con columnas alineadas, pero más compactas
-                const headerIndex = '#'.padEnd(3, ' ');       // columna índice (incluye ".")
+                const headerIndex = '#'.padEnd(3, ' ');       
                 const headerNombre = 'Nombre'.padEnd(12, ' ');
                 const headerPts = 'Pts'.padStart(4, ' ');
                 const headerVic = 'Vic'.padStart(4, ' ');
@@ -211,7 +201,6 @@ class escena1 extends Phaser.Scene {
                     // encabezado + filas
                     //const header = '#  Nombre       Pts  Vi';
                     this.rankingText.setText(lineas);
-                    //this.rankingText.setText([header].concat(lineas).join('\n'));
                 }
             });
             window.conexionWS.enviar('/app/ranking', { });
@@ -247,10 +236,6 @@ class escena1 extends Phaser.Scene {
         };
         this.rankingText = this.add.text(panelX, panelY + 15, 'Cargando ranking...', textStyle)
             .setOrigin(0.5, 0);
-
-        // registrar resize y aplicar posición inicial
-        //this.scale.on('resize', this.resizeRanking, this);
-        //this.resizeRanking(this.scale.gameSize);
     }
 
     cancelarBusqueda() {

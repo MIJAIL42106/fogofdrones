@@ -122,7 +122,9 @@ class escena3 extends Phaser.Scene {
                     vision,             // rectángulo de niebla, controlás su alpha
                     dronA: null,        // imagen del dron, null si no hay
                     dronN: null,
-                    municion: 0         //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
+                    municion: 0,         //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
+                    i,
+                    j
                 });
             }
         }
@@ -601,7 +603,7 @@ class escena3 extends Phaser.Scene {
 
     crearInterfaz() {
         // ancho y alto de pantalla
-        const { width, height } = this.cameras.main;
+        const{ width, height } = this.cameras.main;
         estadoJuego.anchoPantalla = width;
         estadoJuego.altoPantalla = height;
         // fondo centrado en pantalla, hecho a medida, escala 1
@@ -624,7 +626,7 @@ class escena3 extends Phaser.Scene {
         // formato "/topic/Naval-Aereo", clave de partida empieza en posicion 7
         // se divide la clave en 2 subestrings separados por "-"
         // nombreJugadores[0] = Naval, nombreJugadores[1] = Aereo
-        const nombreJugadores = estadoJuego.canalPartida.substring(7).split("-",2)
+        const nombreJugadores = estadoJuego.canalPartida.substring(7).split("-",2);
 
         // ancho y alto de las barras de vida
         const anchoBarra = 420 ;
@@ -706,7 +708,7 @@ class escena3 extends Phaser.Scene {
         // texto de municion
         this.textoMunicion = this.add.text(0, 0, "", { fontFamily: 'Courier, monospace', fontSize: 25, color: '#000000' }).setOrigin(0.5, 0.5).setDepth(3);
         this.textoMunicion.setAlpha(0);
-        ///////////////////////////////////////////// probar font y quitar px
+   
         // texto de ayudas para botones
         this.textoAyudas = this.add.text(0, 0, " ", {fontSize: '25px', fill: '#fff', backgroundColor: '#000' }).setVisible(false).setOrigin(0.5, 0.5).setDepth(3);
 
@@ -1032,6 +1034,12 @@ class escena3 extends Phaser.Scene {
             window.removeEventListener('beforeunload', this.beforeUnloadHandler);
             this.beforeUnloadHandler = null;
         }
+        if (estadoJuego.anchoPantalla) {
+            estadoJuego.anchoPantalla = null;
+        }
+        if (estadoJuego.altoPantalla) {
+            estadoJuego.altoPantalla = null;
+        }
         this.eliminardrones();
         if (this.forma)
             this.forma.destroy();
@@ -1088,8 +1096,13 @@ class escena3 extends Phaser.Scene {
         estadoJuego.ancho = 64 ;                                  // cantidad de celdas horizontales
         estadoJuego.alto = 36 ;                                    // cantidad de celdas verticales
         estadoJuego.tableroX = 50 ; 
-        estadoJuego.tableroY = 60 ;
-        estadoJuego.turno = "" ;                   // no se usa
+        estadoJuego.tableroY = 120 ;
+        estadoJuego.turno = "" ;                   
+        estadoJuego.vidaPortaN = 3 ;                                  //
+        estadoJuego.vidaPortaA = 6 ;                                  //
+        estadoJuego.cantDronesN = 0 ;                                 //
+        estadoJuego.cantDronesA = 0 ;                                 //      
+        estadoJuego.turnosMS = 0 ;
         estadoJuego.clicks = 0 ;
         estadoJuego.fase = "" ;
         estadoJuego.equipo = "" ;
@@ -1099,8 +1112,9 @@ class escena3 extends Phaser.Scene {
         estadoJuego.portaNY = 35 ;
         estadoJuego.portaAX = 63 ;
         estadoJuego.portaAY = 0 ;
-        estadoJuego.escala = 22.36 ;
+        estadoJuego.escala = 26 ;
         estadoJuego.solicitandoGuardado = false ;
+        estadoJuego.escalaBtn = 2 ; 
         mensaje.nombre = "" ;
         mensaje.accion = "" ;
         mensaje.xi = 30 ;
