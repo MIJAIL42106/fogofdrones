@@ -122,9 +122,7 @@ class escena3 extends Phaser.Scene {
                     vision,             // rectángulo de niebla, controlás su alpha
                     dronA: null,        // imagen del dron, null si no hay
                     dronN: null,
-                    municion: 0,         //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
-                    i,
-                    j
+                    municion: 0         //en vez de tener ambas municiones podemos tener solo una porque no vamos a ver la del dron enemigo
                 });
             }
         }
